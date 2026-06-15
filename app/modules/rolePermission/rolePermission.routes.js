@@ -11,6 +11,13 @@ router.get(
   RolePermissionController.getAllRolePermissions,
 );
 
+router.post(
+  "/",
+  auth(),
+  requireRoles(ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN),
+  RolePermissionController.createRolePermissions,
+);
+
 router.get(
   "/:role",
   auth(),
@@ -23,6 +30,13 @@ router.put(
   auth(),
   requireRoles(ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN),
   RolePermissionController.updateRolePermissions,
+);
+
+router.delete(
+  "/:role",
+  auth(),
+  requireRoles(ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN),
+  RolePermissionController.deleteRolePermissions,
 );
 
 module.exports = router;

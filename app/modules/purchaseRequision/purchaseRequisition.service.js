@@ -13,6 +13,7 @@ const parseVariants = require("../../../shared/parseVariants");
 const PurchaseRequisition = db.purchaseRequisition;
 const Product = db.product;
 const Asset = db.asset;
+const Variation = db.variation;
 const Notification = db.notification;
 const User = db.user;
 const Supplier = db.supplier;
@@ -25,6 +26,36 @@ const PURCHASE_REQUISITION_STATUS_UPDATE_ROLES = [
   "accountant",
   "inventor",
 ];
+
+const buildPurchaseRequisitionIncludes = ({ includeSupplier = true } = {}) => {
+  const includes = [];
+
+  if (includeSupplier && Supplier) {
+    includes.push({
+      model: Supplier,
+      as: "supplier",
+      attributes: ["Id", "name"],
+    });
+  }
+
+  if (Warehouse) {
+    includes.push({
+      model: Warehouse,
+      as: "warehouse",
+      attributes: ["Id", "name"],
+    });
+  }
+
+  if (Asset) {
+    includes.push({
+      model: Asset,
+      as: "asset",
+      attributes: ["Id", "name"],
+    });
+  }
+
+  return includes;
+};
 
 const normalizeOptionalText = (value) => {
   if (value === undefined || value === null) return null;
@@ -99,6 +130,51 @@ const summarizeRequisitionItems = (items = []) => ({
   quantity: items.reduce((total, item) => total + Number(item.quantity || 0), 0),
   amount: items.reduce((total, item) => total + Number(item.amount || 0), 0),
 });
+
+const incrementProductStock = async (
+  { productId, quantity, purchasePrice },
+  options = {},
+) => {
+  const normalizedProductId = normalizeOptionalId(productId);
+  const normalizedQuantity = Number(quantity || 0);
+
+  if (!normalizedProductId || normalizedQuantity <= 0 || !Variation) return;
+
+  const existingVariation = await Variation.findOne({
+    where: { productId: normalizedProductId },
+    order: [["Id", "ASC"]],
+    transaction: options.transaction,
+  });
+
+  if (existingVariation) {
+    const nextPayload = {
+      stock: Number(existingVariation.stock || 0) + normalizedQuantity,
+      availability: "in stock",
+    };
+
+    if (purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== "") {
+      nextPayload.purchasePrice = Number(purchasePrice);
+    }
+
+    await existingVariation.update(nextPayload, {
+      transaction: options.transaction,
+    });
+    return;
+  }
+
+  await Variation.create(
+    {
+      productId: normalizedProductId,
+      purchasePrice:
+        purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== ""
+          ? Number(purchasePrice)
+          : null,
+      stock: normalizedQuantity,
+      availability: "in stock",
+    },
+    { transaction: options.transaction },
+  );
+};
 
 const resolveRequisitionItem = async (
   { productId, assetId, assetName, existing = null },
@@ -236,6 +312,15 @@ const insertIntoDB = async (data = {}) => {
       transaction: t,
     });
 
+    await incrementProductStock(
+      {
+        productId: item.productId,
+        quantity: payload.quantity,
+        purchasePrice: data.price || data.purchasePrice,
+      },
+      { transaction: t },
+    );
+
     const users = await User.findAll({
       attributes: ["Id", "role"],
       where: {
@@ -319,6 +404,8 @@ const insertBulkIntoDB = async (data = {}, preparedItems = null) => {
         assetId: resolvedItem.assetId,
         quantity,
         amount: Number(item.amount || 0),
+        price: Number(item.price || item.purchasePrice || 0),
+        discount: Number(item.discount || 0),
         variants: parseVariants(item.variants),
       });
     }
@@ -344,6 +431,19 @@ const insertBulkIntoDB = async (data = {}, preparedItems = null) => {
         file: file || null,
       },
       { transaction: t },
+    );
+
+    await Promise.all(
+      normalizedItems.map((item) =>
+        incrementProductStock(
+          {
+            productId: item.productId,
+            quantity: item.quantity,
+            purchasePrice: item.price,
+          },
+          { transaction: t },
+        ),
+      ),
     );
 
     const users = await User.findAll({
@@ -434,23 +534,7 @@ const getAllFromDB = async (filters, options) => {
     where: whereConditions,
     offset: skip,
     limit,
-    include: [
-      {
-        model: Supplier,
-        as: "supplier",
-        attributes: ["Id", "name"],
-      },
-      {
-        model: Warehouse,
-        as: "warehouse",
-        attributes: ["Id", "name"],
-      },
-      {
-        model: Asset,
-        as: "asset",
-        attributes: ["Id", "name"],
-      },
-    ],
+    include: buildPurchaseRequisitionIncludes(),
     paranoid: true,
     order:
       options.sortBy && options.sortOrder
@@ -480,23 +564,7 @@ const getDataById = async (id) => {
     where: {
       Id: id,
     },
-    include: [
-      {
-        model: Supplier,
-        as: "supplier",
-        attributes: ["Id", "name"],
-      },
-      {
-        model: Warehouse,
-        as: "warehouse",
-        attributes: ["Id", "name"],
-      },
-      {
-        model: Asset,
-        as: "asset",
-        attributes: ["Id", "name"],
-      },
-    ],
+    include: buildPurchaseRequisitionIncludes(),
   });
 
   return result;
@@ -942,13 +1010,7 @@ const updateOneFromDB = async (id, payload) => {
 
 const getAllFromDBWithoutQuery = async () => {
   const result = await PurchaseRequisition.findAll({
-    include: [
-      {
-        model: Asset,
-        as: "asset",
-        attributes: ["Id", "name"],
-      },
-    ],
+    include: buildPurchaseRequisitionIncludes({ includeSupplier: false }),
     paranoid: true,
     order: [["createdAt", "DESC"]],
   });

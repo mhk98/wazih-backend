@@ -26,6 +26,17 @@ const getRolePermissionByRole = catchAsync(async (req, res) => {
   });
 });
 
+const createRolePermissions = catchAsync(async (req, res) => {
+  const result = await RolePermissionService.createRolePermissions(req.body);
+
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: "Role created successfully",
+    data: result,
+  });
+});
+
 const updateRolePermissions = catchAsync(async (req, res) => {
   const result = await RolePermissionService.updateRolePermissions(
     req.params.role,
@@ -40,8 +51,21 @@ const updateRolePermissions = catchAsync(async (req, res) => {
   });
 });
 
+const deleteRolePermissions = catchAsync(async (req, res) => {
+  const result = await RolePermissionService.deleteRolePermissions(req.params.role);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Role deleted successfully",
+    data: result,
+  });
+});
+
 module.exports = {
   getAllRolePermissions,
   getRolePermissionByRole,
+  createRolePermissions,
   updateRolePermissions,
+  deleteRolePermissions,
 };

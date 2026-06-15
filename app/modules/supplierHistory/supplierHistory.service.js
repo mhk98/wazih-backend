@@ -8,8 +8,6 @@ const {
 
 const SupplierHistory = db.supplierHistory;
 const Supplier = db.supplier;
-const Warehouse = db.warehouse;
-const Book = db.book;
 
 const insertIntoDB = async (data) => {
   const result = await SupplierHistory.create(data);
@@ -168,23 +166,21 @@ const getAllFromDB = async (filters, options) => {
       : { status }),
   });
 
+  const include = [];
+  if (Supplier) {
+    include.push({
+      model: Supplier,
+      as: "supplier",
+      attributes: ["Id", "name"],
+    });
+  }
+
   // ✅ paginated data
   const data = await SupplierHistory.findAll({
     where: whereConditions,
     offset: skip,
     limit,
-    include: [
-      {
-        model: Supplier,
-        as: "supplier",
-        attributes: ["Id", "name"],
-      },
-      {
-        model: Book,
-        as: "book",
-        attributes: ["Id", "name"],
-      },
-    ],
+    include,
     paranoid: true,
     order:
       options.sortBy && options.sortOrder

@@ -12,6 +12,11 @@ db.rolePermission =
     db.sequelize,
     DataTypes,
   );
+db.userLogHistory =
+  require("../app/modules/userLogHistory/userLogHistory.model")(
+    db.sequelize,
+    DataTypes,
+  );
 
 // Products
 db.product = require("../app/modules/product/product.model")(
@@ -121,6 +126,10 @@ db.visitorStat = require("../app/modules/visitorStat/visitorStat.model")(
   db.sequelize,
   DataTypes,
 );
+db.landingPage = require("../app/modules/landingPage/landingPage.model")(
+  db.sequelize,
+  DataTypes,
+);
 
 // =====================
 // Associations
@@ -152,22 +161,8 @@ const ensureUserRoleColumn = async () => {
   const queryInterface = db.sequelize.getQueryInterface();
   const tableName = db.user.getTableName();
   const tableDefinition = await queryInterface.describeTable(tableName);
-  const roleValues = [
-    "superAdmin",
-    "admin",
-    "marketer",
-    "leader",
-    "inventor",
-    "accountant",
-    "logistics",
-    "up",
-    "cs",
-    "staff",
-    "employee",
-    "user",
-  ];
   const definition = {
-    type: DataTypes.ENUM(...roleValues),
+    type: DataTypes.STRING(64),
     allowNull: true,
     defaultValue: "user",
   };
@@ -281,6 +276,232 @@ const ensurePurchaseRequisitionExtraColumns = async () => {
   await maybeAdd("bankAccount", { type: DataTypes.INTEGER, allowNull: true });
 };
 
+const ensureLandingPageContentColumns = async () => {
+  const queryInterface = db.sequelize.getQueryInterface();
+  const tableName = db.landingPage.getTableName();
+  const tableDefinition = await queryInterface.describeTable(tableName);
+  const maybeAdd = async (columnName, definition) => {
+    if (!tableDefinition[columnName]) {
+      await queryInterface.addColumn(tableName, columnName, definition);
+    }
+  };
+  const maybeChange = async (columnName, definition) => {
+    if (tableDefinition[columnName]) {
+      await queryInterface.changeColumn(tableName, columnName, definition);
+    }
+  };
+
+  await maybeAdd("productId", { type: DataTypes.INTEGER(10), allowNull: true });
+  await maybeAdd("product", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("title", { type: DataTypes.STRING, allowNull: false });
+  await maybeAdd("subTitle", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("bannerImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("prizeImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("reviewImages", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("shortDescription", { type: DataTypes.TEXT, allowNull: true });
+  await maybeAdd("video", { type: DataTypes.STRING(500), allowNull: true });
+  await maybeAdd("reviewTitle", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("descriptionTitle", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("description", { type: DataTypes.TEXT, allowNull: true });
+  await maybeAdd("whyChooseTitle", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("whyChooseUs", { type: DataTypes.TEXT, allowNull: true });
+  await maybeAdd("price", { type: DataTypes.DECIMAL(10, 2), allowNull: true });
+  await maybeAdd("originalPrice", { type: DataTypes.DECIMAL(10, 2), allowNull: true });
+  await maybeAdd("phone", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("template", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("countdown", { type: DataTypes.STRING(64), allowNull: true });
+  await maybeAdd("status", { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true });
+  await maybeAdd("deletedAt", { type: DataTypes.DATE, allowNull: true });
+
+  await maybeChange("bannerImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeChange("prizeImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeChange("reviewImages", { type: DataTypes.TEXT("long"), allowNull: true });
+};
+
+const svgDataUrl = (svg) =>
+  `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg.replace(/\s+/g, " ").trim())}`;
+
+const campaignImage = (accent, title, subtitle) =>
+  svgDataUrl(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
+      <defs>
+        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="#17110b"/>
+          <stop offset="0.55" stop-color="#4a2d12"/>
+          <stop offset="1" stop-color="${accent}"/>
+        </linearGradient>
+        <filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-opacity=".45"/></filter>
+      </defs>
+      <rect width="1200" height="620" fill="url(#bg)"/>
+      <circle cx="980" cy="120" r="210" fill="#ffffff" opacity=".08"/>
+      <circle cx="160" cy="500" r="230" fill="#f59e0b" opacity=".08"/>
+      <g fill="none" stroke="#f8d98b" stroke-opacity=".25" stroke-width="3">
+        <path d="M60 120h1080M60 500h1080M180 60v500M1020 60v500"/>
+      </g>
+      <g filter="url(#shadow)">
+        <rect x="690" y="130" width="380" height="280" rx="18" fill="#f8fafc"/>
+        <rect x="720" y="160" width="52" height="160" rx="16" fill="#111827"/>
+        <rect x="790" y="145" width="52" height="175" rx="16" fill="#92400e"/>
+        <rect x="860" y="160" width="52" height="160" rx="16" fill="#991b1b"/>
+        <rect x="930" y="145" width="52" height="175" rx="16" fill="#065f46"/>
+        <rect x="1000" y="160" width="42" height="160" rx="14" fill="#1e3a8a"/>
+        <rect x="745" y="350" width="260" height="34" rx="17" fill="${accent}"/>
+      </g>
+      <text x="90" y="165" fill="#fff7ed" font-family="Arial, sans-serif" font-size="48" font-weight="800">${title}</text>
+      <text x="90" y="245" fill="#fde047" font-family="Arial, sans-serif" font-size="78" font-weight="900">Special Offer</text>
+      <text x="90" y="315" fill="#ffffff" font-family="Arial, sans-serif" font-size="34" font-weight="700">${subtitle}</text>
+      <rect x="90" y="365" width="310" height="70" rx="12" fill="${accent}"/>
+      <text x="125" y="411" fill="#ffffff" font-family="Arial, sans-serif" font-size="28" font-weight="800">Order Now</text>
+    </svg>
+  `);
+
+const prizeImage = (accent, title) =>
+  svgDataUrl(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
+      <defs>
+        <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="#7dd3fc"/>
+          <stop offset=".55" stop-color="#ffffff"/>
+          <stop offset="1" stop-color="#c7d2fe"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="620" fill="url(#sky)"/>
+      <circle cx="1010" cy="110" r="88" fill="#fff" opacity=".8"/>
+      <rect x="125" y="170" width="280" height="330" rx="28" fill="#ef4444"/>
+      <rect x="155" y="210" width="220" height="70" rx="16" fill="#f59e0b"/>
+      <text x="182" y="258" fill="#fff" font-size="32" font-family="Arial" font-weight="900">SCRATCH</text>
+      <text x="155" y="360" fill="#fff" font-size="46" font-family="Arial" font-weight="900">PRIZE CARD</text>
+      <path d="M520 390 C610 270, 770 260, 870 380 L1030 382 L1045 430 L520 430 Z" fill="${accent}"/>
+      <circle cx="610" cy="430" r="72" fill="#111827"/>
+      <circle cx="610" cy="430" r="38" fill="#64748b"/>
+      <circle cx="930" cy="430" r="72" fill="#111827"/>
+      <circle cx="930" cy="430" r="38" fill="#64748b"/>
+      <path d="M670 320 H830 L890 385 H620 Z" fill="#1d4ed8"/>
+      <text x="520" y="150" fill="#1e3a8a" font-size="58" font-family="Arial" font-weight="900">${title}</text>
+      <text x="520" y="210" fill="#ef4444" font-size="36" font-family="Arial" font-weight="800">Win exciting campaign rewards</text>
+    </svg>
+  `);
+
+const reviewImage = (accent, name) =>
+  svgDataUrl(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
+      <rect width="480" height="360" rx="24" fill="#fff7ed"/>
+      <rect x="24" y="24" width="432" height="250" rx="22" fill="${accent}" opacity=".18"/>
+      <circle cx="160" cy="130" r="55" fill="${accent}"/>
+      <circle cx="295" cy="130" r="55" fill="#111827"/>
+      <rect x="95" y="190" width="275" height="42" rx="21" fill="#ffffff"/>
+      <rect x="0" y="255" width="480" height="105" fill="#111827" opacity=".88"/>
+      <text x="240" y="310" text-anchor="middle" fill="#ffffff" font-family="Arial" font-size="28" font-weight="900">${name}</text>
+      <text x="240" y="337" text-anchor="middle" fill="#facc15" font-family="Arial" font-size="18" font-weight="700">Campaign Winner</text>
+    </svg>
+  `);
+
+const seedDefaultLandingPages = async () => {
+  const products = await db.product.findAll({
+    attributes: ["Id", "name"],
+    limit: 2,
+    order: [["Id", "ASC"]],
+  });
+
+  const firstProduct = products[0]?.get({ plain: true });
+  const secondProduct = products[1]?.get({ plain: true }) || firstProduct;
+
+  const landingPages = [
+    {
+      productId: firstProduct?.Id || null,
+      product: firstProduct?.name || "Attar & Perfume Combo Pack",
+      title: "আতর পারফিউম কম্বো অফার",
+      subTitle: "৫ পিস আতর, ৫ পিস পারফিউম এবং কাবাস কিসওয়াহ ফ্রি",
+      bannerImageUrl: campaignImage("#0f766e", "Attar Perfume Combo", "5 pcs attar + 5 pcs perfume"),
+      prizeImageUrl: prizeImage("#2563eb", "R15 Dream Campaign"),
+      reviewImages: JSON.stringify([
+        reviewImage("#dc2626", "রাকিবুল ইসলাম"),
+        reviewImage("#2563eb", "ফারহানা তানিয়া"),
+        reviewImage("#16a34a", "মোঃ রনি"),
+        reviewImage("#f97316", "মাহিয়া ইমরান"),
+      ]),
+      shortDescription:
+        "এই ক্যাম্পেইনে পাচ্ছেন প্রিমিয়াম আতর ও পারফিউম কম্বো। প্রতিটি সুগন্ধি দৈনন্দিন ব্যবহার, নামাজ, অফিস এবং গিফটের জন্য উপযোগী। দীর্ঘস্থায়ী ঘ্রাণ, সুন্দর প্যাকেজিং এবং ক্যাশ অন ডেলিভারির সুবিধা থাকছে।",
+      video: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      reviewTitle: "আগের ক্যাম্পেইনের বিজয়ীরা",
+      descriptionTitle: "আতর পারফিউম কম্বো কেন নিবেন",
+      description:
+        "এক প্যাকের মধ্যে বিভিন্ন ঘ্রাণের আতর ও পারফিউম থাকায় নিজের জন্য ব্যবহার করা যায়, আবার প্রিয়জনকে উপহারও দেওয়া যায়। অল্প দামে premium fragrance collection নেওয়ার জন্য এই offer তৈরি করা হয়েছে।",
+      whyChooseTitle: "Wazih থেকে কেন কিনবেন",
+      whyChooseUs:
+        "আমরা authentic product, দ্রুত delivery, সহজ return support এবং trusted customer service দিয়ে থাকি। অর্ডার করার পর customer support team আপনার সাথে confirm করবে।",
+      price: 699,
+      originalPrice: 1500,
+      phone: "+8808647-222899",
+      template: "Template Design 1",
+      countdown: "2026-08-31 23:59:59",
+      status: true,
+    },
+    {
+      productId: secondProduct?.Id || null,
+      product: secondProduct?.name || "Luxury Oud Gift Set",
+      title: "লাক্সারি ওউদ গিফট ক্যাম্পেইন",
+      subTitle: "ওউদ, আতর এবং gift-ready premium fragrance set",
+      bannerImageUrl: campaignImage("#7c2d12", "Luxury Oud Gift Set", "Premium gift-ready fragrance"),
+      prizeImageUrl: prizeImage("#7c3aed", "Gift Reward Campaign"),
+      reviewImages: JSON.stringify([
+        reviewImage("#7c3aed", "সোহাগ হোসেন"),
+        reviewImage("#0891b2", "সেলিম উদ্দিন"),
+        reviewImage("#be123c", "আসিফ মাহমুদ"),
+        reviewImage("#ca8a04", "রবিন হাসান"),
+      ]),
+      shortDescription:
+        "লাক্সারি ওউদ গিফট সেটে থাকছে premium oud fragrance, elegant packaging এবং long-lasting performance। যারা premium gift বা নিজের collection-এর জন্য মানসম্মত perfume চান তাদের জন্য এই campaign।",
+      video: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      reviewTitle: "Customer Review Gallery",
+      descriptionTitle: "Campaign details",
+      description:
+        "এই set টি festive gift, corporate gift এবং personal use-এর জন্য perfect। strong oud note, smooth finish এবং premium bottle design একসাথে পাওয়া যাচ্ছে campaign price-এ।",
+      whyChooseTitle: "Customer benefits",
+      whyChooseUs:
+        "প্রতিটি order quality check করে পাঠানো হয়। ঢাকার ভিতরে দ্রুত delivery, ঢাকার বাইরে courier delivery এবং cash on delivery সুবিধা আছে।",
+      price: 1299,
+      originalPrice: 2200,
+      phone: "+8808647-222899",
+      template: "Template Design 2",
+      countdown: "2026-12-31 23:59:59",
+      status: true,
+    },
+  ];
+
+  const existing = await db.landingPage.findAll({
+    attributes: ["Id", "title"],
+    paranoid: true,
+    raw: true,
+  });
+  const oldSeedTitles = [
+    "Dynamic Summer Sale Campaign",
+    "Dynamic Eid Special Offer",
+    "Summer Sale Campaign",
+    "Eid Special Offer",
+    "New Year Mega Deal",
+  ];
+  const newSeedTitles = landingPages.map((page) => page.title);
+  const hasOnlySeedRows =
+    existing.length === 0 ||
+    existing.every((row) => oldSeedTitles.includes(row.title) || newSeedTitles.includes(row.title));
+
+  if (hasOnlySeedRows) {
+    await db.landingPage.destroy({ where: {}, force: true });
+    await db.landingPage.bulkCreate(landingPages);
+    return;
+  }
+
+  await Promise.all(
+    landingPages.map((page) =>
+      db.landingPage.findOrCreate({
+        where: { title: page.title },
+        defaults: page,
+      }),
+    ),
+  );
+};
+
 // =====================
 // Sync
 // =====================
@@ -295,6 +516,8 @@ db.sequelize
     await ensureProductStatusNoteColumns();
     await ensurePurchaseRequisitionItemsColumn();
     await ensurePurchaseRequisitionExtraColumns();
+    await ensureLandingPageContentColumns();
+    await seedDefaultLandingPages();
 
     // Initialize default role permissions
     const {

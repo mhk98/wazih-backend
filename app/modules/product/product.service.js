@@ -242,11 +242,11 @@ const getAllFromDB = async (filters, options) => {
 
   const andConditions = [];
 
-  // ✅ Search (ILIKE on searchable fields)
+  // ✅ Search by product name or SKU/barcode. MySQL uses LIKE.
   if (searchTerm && searchTerm.trim()) {
     andConditions.push({
       [Op.or]: ProductSearchableFields.map((field) => ({
-        [field]: { [Op.iLike]: `%${searchTerm.trim()}%` },
+        [field]: { [Op.like]: `%${searchTerm.trim()}%` },
       })),
     });
   }

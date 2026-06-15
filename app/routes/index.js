@@ -26,6 +26,7 @@ const VisitorStatRoutes        = require("../modules/visitorStat/visitorStat.rou
 const SmsMarketingRoutes       = require("../modules/smsMarketing/smsMarketing.routes");
 const FacebookCatalogueRoutes  = require("../modules/facebookCatalogue/facebookCatalogue.routes");
 const DashboardRoutes          = require("../modules/dashboard/dashboard.routes");
+const LandingPageRoutes        = require("../modules/landingPage/landingPage.routes");
 
 const router = express.Router();
 
@@ -57,6 +58,7 @@ const moduleRoutes = [
   { path: "/sms-marketing",        route: SmsMarketingRoutes },
   { path: "/facebook-catalogue",   route: FacebookCatalogueRoutes },
   { path: "/dashboard",            route: DashboardRoutes },
+  { path: "/landing-pages",        route: LandingPageRoutes },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

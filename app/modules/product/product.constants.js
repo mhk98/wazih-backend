@@ -3,10 +3,11 @@ const ProductFilterAbleFileds = [
   "startDate",
   "endDate",
   "name",
+  "sku",
   "warehouseId",
 ];
 
-const ProductSearchableFields = ["searchTerm"];
+const ProductSearchableFields = ["name", "sku"];
 
 module.exports = {
   ProductFilterAbleFileds,

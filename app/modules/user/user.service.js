@@ -93,6 +93,9 @@ const register = async (userData) => {
 
   const isUserExist = await User.findOne({ where: { Email } });
   if (isUserExist) throw new ApiError(409, "User already exist");
+  if (userData.role) {
+    await RolePermissionService.ensureRoleExists(userData.role);
+  }
 
   // ✅ user create
   const result = await User.create({
@@ -203,6 +206,9 @@ const updateUserFromDB = async (id, payload) => {
 
   if (!existing) {
     throw new ApiError(404, "User not found");
+  }
+  if (payload.role) {
+    await RolePermissionService.ensureRoleExists(payload.role);
   }
 
   await User.update(payload, {

@@ -84,6 +84,18 @@ const getOrderByIdFromDB = async (id) => {
   return order;
 };
 
+const trackOrdersByPhoneFromDB = async (phone) => {
+  const normalized = String(phone || "").trim();
+  if (!normalized) throw new ApiError(400, "Phone number is required");
+
+  return Order.findAll({
+    where: { customerPhone: { [Op.like]: `%${normalized}%` } },
+    limit: 20,
+    order: [["Id", "DESC"]],
+    paranoid: true,
+  });
+};
+
 const updateOrderInDB = async (id, payload) => {
   const order = await Order.findByPk(id);
   if (!order) throw new ApiError(404, "Order not found");
@@ -113,6 +125,7 @@ const OrderService = {
   getOrdersFromDB,
   getOrderStatusCountsFromDB,
   getOrderByIdFromDB,
+  trackOrdersByPhoneFromDB,
   updateOrderInDB,
   deleteOrderFromDB,
   updateOrderStatusInDB,
