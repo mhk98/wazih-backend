@@ -4,6 +4,7 @@ const RolePermissionRoutes = require("../modules/rolePermission/rolePermission.r
 const ProductRoutes = require("../modules/product/product.routes");
 const VariationRoutes = require("../modules/variation/variation.routes");
 const CategoryRoutes = require("../modules/category/category.routes");
+const MenuRoutes = require("../modules/menu/menu.routes");
 const SubcategoryRoutes = require("../modules/subcategory/subcategory.routes");
 const ChildcategoryRoutes = require("../modules/childcategory/childcategory.routes");
 const BrandRoutes = require("../modules/brand/brand.routes");
@@ -36,6 +37,7 @@ const moduleRoutes = [
   { path: "/product",              route: ProductRoutes },
   { path: "/variation",            route: VariationRoutes },
   { path: "/category",             route: CategoryRoutes },
+  { path: "/menu",                 route: MenuRoutes },
   { path: "/subcategory",          route: SubcategoryRoutes },
   { path: "/childcategory",        route: ChildcategoryRoutes },
   { path: "/brand",                route: BrandRoutes },

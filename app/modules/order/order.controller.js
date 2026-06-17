@@ -3,8 +3,21 @@ const sendResponse = require("../../../shared/sendResponse");
 const pick = require("../../../shared/pick");
 const OrderService = require("./order.service");
 
+const resolveIpAddress = (req) => {
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const rawIp = Array.isArray(forwardedFor)
+    ? forwardedFor[0]
+    : String(forwardedFor || "").split(",")[0];
+  return (rawIp || req.ip || req.socket?.remoteAddress || "")
+    .replace(/^::ffff:/, "")
+    .trim() || null;
+};
+
 const createOrder = catchAsync(async (req, res) => {
-  const result = await OrderService.createOrderInDB(req.body);
+  const result = await OrderService.createOrderInDB({
+    ...req.body,
+    ipAddress: req.body.ipAddress || resolveIpAddress(req),
+  });
   sendResponse(res, {
     statusCode: 201,
     success: true,

@@ -5,6 +5,7 @@ const paginationHelpers = require("../../../helpers/paginationHelper");
 const { ORDER_STATUS, ORDER_STATUS_VALUES, ORDER_SEARCHABLE_FIELDS } = require("./order.constants");
 
 const Order = db.order;
+const IpBlock = db.ipBlock;
 
 const generateOrderId = async () => {
   const last = await Order.findOne({
@@ -16,6 +17,13 @@ const generateOrderId = async () => {
 };
 
 const createOrderInDB = async (payload) => {
+  const ipAddress = String(payload.ipAddress || "").trim();
+  if (ipAddress && IpBlock) {
+    const blockedIp = await IpBlock.findOne({ where: { ip: ipAddress }, paranoid: true });
+    if (blockedIp) {
+      throw new ApiError(403, "Orders from this IP address are blocked");
+    }
+  }
   const orderId = await generateOrderId();
   const order = await Order.create({ ...payload, orderId });
   return order;

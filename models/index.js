@@ -245,6 +245,39 @@ const ensureProductStatusNoteColumns = async () => {
   }
 };
 
+const ensureCategoryFrontendColumns = async () => {
+  const queryInterface = db.sequelize.getQueryInterface();
+  const tableName = db.category.getTableName();
+  const tableDefinition = await queryInterface.describeTable(tableName);
+  const maybeAdd = async (columnName, definition) => {
+    if (!tableDefinition[columnName]) {
+      await queryInterface.addColumn(tableName, columnName, definition);
+    }
+  };
+
+  await maybeAdd("status", {
+    type: DataTypes.STRING(32),
+    allowNull: false,
+    defaultValue: "Active",
+  });
+  await maybeAdd("imageFile", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("image", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("bannerImage", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("sortOrder", { type: DataTypes.INTEGER(10), allowNull: true });
+  await maybeAdd("isActive", {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  });
+  await maybeAdd("frontView", {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  });
+  await maybeAdd("metaTitle", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("metaDescription", { type: DataTypes.TEXT, allowNull: true });
+};
+
 const ensurePurchaseRequisitionItemsColumn = async () => {
   const queryInterface = db.sequelize.getQueryInterface();
   const tableName = db.purchaseRequisition.getTableName();
@@ -316,6 +349,18 @@ const ensureLandingPageContentColumns = async () => {
   await maybeChange("bannerImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
   await maybeChange("prizeImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
   await maybeChange("reviewImages", { type: DataTypes.TEXT("long"), allowNull: true });
+};
+
+const ensureOrderIpAddressColumn = async () => {
+  const queryInterface = db.sequelize.getQueryInterface();
+  const tableName = db.order.getTableName();
+  const tableDefinition = await queryInterface.describeTable(tableName);
+  if (!tableDefinition.ipAddress) {
+    await queryInterface.addColumn(tableName, "ipAddress", {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+    });
+  }
 };
 
 const svgDataUrl = (svg) =>
@@ -514,8 +559,10 @@ db.sequelize
     await ensureUserDocumentColumns();
     await ensureSupplierStatusNoteColumns();
     await ensureProductStatusNoteColumns();
+    await ensureCategoryFrontendColumns();
     await ensurePurchaseRequisitionItemsColumn();
     await ensurePurchaseRequisitionExtraColumns();
+    await ensureOrderIpAddressColumn();
     await ensureLandingPageContentColumns();
     await seedDefaultLandingPages();
 

@@ -21,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(32),
         allowNull: false,
       },
+      ipAddress: {
+        type: DataTypes.STRING(128),
+        allowNull: true,
+      },
       customerArea: {
         type: DataTypes.STRING(100),
         allowNull: true,

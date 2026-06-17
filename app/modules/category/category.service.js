@@ -108,10 +108,48 @@ const updateOneFromDB = async (id, payload) => {
 const getAllFromDBWithoutQuery = async () => {
   const result = await Category.findAll({
     paranoid: true,
-    order: [["createdAt", "DESC"]],
+    order: [["sortOrder", "ASC"], ["createdAt", "DESC"]],
   });
 
   return result;
+};
+
+const getPublicMenu = async () => {
+  const [categories, subcategories] = await Promise.all([
+    Category.findAll({
+      where: {
+        [Op.and]: [
+          { status: { [Op.ne]: "Inactive" } },
+          { isActive: { [Op.ne]: false } },
+        ],
+      },
+      paranoid: true,
+      order: [["sortOrder", "ASC"], ["createdAt", "DESC"]],
+      raw: true,
+    }),
+    db.subcategory.findAll({
+      where: { status: { [Op.ne]: "Inactive" } },
+      paranoid: true,
+      order: [["createdAt", "DESC"]],
+      raw: true,
+    }),
+  ]);
+
+  const subcategoriesByCategory = subcategories.reduce((acc, subcategory) => {
+    const key = String(subcategory.categoryId || "");
+    if (!acc[key]) acc[key] = [];
+    acc[key].push({ Id: subcategory.Id, label: subcategory.name, name: subcategory.name });
+    return acc;
+  }, {});
+
+  return categories.map((category, index) => ({
+    Id: category.Id,
+    label: category.name,
+    subItems: subcategoriesByCategory[String(category.Id)] || [],
+    sortOrder: category.sortOrder ?? index,
+    isActive: category.isActive !== false && category.frontView !== false,
+    imageFile: category.imageFile || category.image || null,
+  }));
 };
 
 const CategoryService = {
@@ -121,6 +159,7 @@ const CategoryService = {
   updateOneFromDB,
   getDataById,
   getAllFromDBWithoutQuery,
+  getPublicMenu,
 };
 
 module.exports = CategoryService;

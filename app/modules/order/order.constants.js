@@ -14,7 +14,7 @@ const ORDER_STATUS_VALUES = Object.values(ORDER_STATUS);
 
 const COURIER_OPTIONS = ["Pathao", "Steadfast", "Redx", "Paperfly", "eCourier"];
 
-const ORDER_SEARCHABLE_FIELDS = ["customerName", "customerPhone", "orderId"];
+const ORDER_SEARCHABLE_FIELDS = ["customerName", "customerPhone", "orderId", "ipAddress"];
 
 module.exports = {
   ORDER_STATUS,

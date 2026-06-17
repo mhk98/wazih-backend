@@ -70,6 +70,16 @@ const getAllFromDBWithoutQuery = catchAsync(async (req, res) => {
   });
 });
 
+const getPublicMenu = catchAsync(async (req, res) => {
+  const result = await CategoryService.getPublicMenu();
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Public menu fetched!!",
+    data: result,
+  });
+});
+
 const CategoryController = {
   getAllFromDB,
   insertIntoDB,
@@ -77,6 +87,7 @@ const CategoryController = {
   updateOneFromDB,
   deleteIdFromDB,
   getAllFromDBWithoutQuery,
+  getPublicMenu,
 };
 
 module.exports = CategoryController;
