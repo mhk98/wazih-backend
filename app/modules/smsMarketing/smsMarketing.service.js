@@ -6,15 +6,15 @@ const ApiError = require("../../../error/ApiError");
 
 const buildOrderWhere = (filter) => {
   if (!filter || filter === "All") return {};
-  const ACTIVE_STATUSES   = ["pending", "processing", "shipped", "delivered"];
-  const INACTIVE_STATUSES = ["cancelled", "returned", "refunded"];
+  const ACTIVE_STATUSES   = ["pending", "confirmed", "packaging", "on_hold", "in_courier", "delivered"];
+  const INACTIVE_STATUSES = ["cancelled", "returned", "incomplete"];
   if (filter === "Active Customers")   return { status: { [Op.in]: ACTIVE_STATUSES   } };
   if (filter === "Inactive Customers") return { status: { [Op.in]: INACTIVE_STATUSES } };
   return {};
 };
 
 const getRecipients = async (filter) => {
-  const where = { ...buildOrderWhere(filter), customerPhone: { [Op.ne]: null } };
+  const where = { ...buildOrderWhere(filter), customerPhone: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }, { [Op.ne]: "Guest" }] } };
   const rows = await db.order.findAll({
     attributes: ["customerPhone", "customerName"],
     where,

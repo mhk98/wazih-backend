@@ -20,6 +20,16 @@ const getDataById = catchAsync(async (req, res) => {
   sendResponse(res, { statusCode: 200, success: true, message: "Page fetched", data: result });
 });
 
+const getPublicFromDB = catchAsync(async (req, res) => {
+  const result = await Service.getPublicFromDB();
+  sendResponse(res, { statusCode: 200, success: true, message: "Public pages fetched", meta: result.meta, data: result.data });
+});
+
+const getPublicBySlugFromDB = catchAsync(async (req, res) => {
+  const result = await Service.getPublicBySlugFromDB(req.params.slug);
+  sendResponse(res, { statusCode: 200, success: true, message: "Public page fetched", data: result });
+});
+
 const updateOneFromDB = catchAsync(async (req, res) => {
   const result = await Service.updateOneFromDB(req.params.id, req.body);
   sendResponse(res, { statusCode: 200, success: true, message: "Page updated", data: result });
@@ -30,4 +40,12 @@ const deleteIdFromDB = catchAsync(async (req, res) => {
   sendResponse(res, { statusCode: 200, success: true, message: "Page deleted", data: result });
 });
 
-module.exports = { insertIntoDB, getAllFromDB, getDataById, updateOneFromDB, deleteIdFromDB };
+module.exports = {
+  insertIntoDB,
+  getAllFromDB,
+  getDataById,
+  getPublicFromDB,
+  getPublicBySlugFromDB,
+  updateOneFromDB,
+  deleteIdFromDB,
+};

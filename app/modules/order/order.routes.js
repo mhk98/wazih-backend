@@ -7,6 +7,7 @@ const router = express.Router();
 
 // Public — customers place orders from the website without login
 router.post("/", OrderController.createOrder);
+router.post("/create", OrderController.createOrder);
 router.get("/track", OrderController.trackOrdersByPhone);
 
 // Admin panel — require authentication

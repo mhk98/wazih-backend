@@ -11,6 +11,8 @@ const chargeSettingPermission = requireAnyPermission([
   "delivery_charge",
 ]);
 
+router.get("/public", ChargeSettingController.getPublicChargeSettings);
+
 router.get(
   "/",
   auth(ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN),

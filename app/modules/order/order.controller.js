@@ -60,7 +60,7 @@ const getOrderById = catchAsync(async (req, res) => {
 });
 
 const trackOrdersByPhone = catchAsync(async (req, res) => {
-  const result = await OrderService.trackOrdersByPhoneFromDB(req.query.phone);
+  const result = await OrderService.trackOrdersByPhoneFromDB(req.query.phone, req.query.invoiceId);
   sendResponse(res, {
     statusCode: 200,
     success: true,

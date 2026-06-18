@@ -48,6 +48,62 @@ const normalizeSettingData = (value, depth = 0) => {
   return value;
 };
 
+const normalizePhoneForWhatsApp = (value) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("880")) return digits;
+  if (digits.startsWith("0")) return `88${digits}`;
+  return digits;
+};
+
+const normalizeSocialUrl = (key, value) => {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (key === "whatsapp" && !/^https?:\/\//i.test(url)) {
+    const phone = normalizePhoneForWhatsApp(url);
+    return phone ? `https://wa.me/${phone}` : "";
+  }
+  return url;
+};
+
+const normalizeSocialMediaData = (value) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return {};
+    try {
+      return normalizeSocialMediaData(JSON.parse(trimmed));
+    } catch {
+      return {};
+    }
+  }
+
+  if (!Array.isArray(value)) return normalizeSettingData(value);
+
+  return value.reduce((acc, platform) => {
+    if (!platform || typeof platform !== "object") return acc;
+    if (platform.active === false || !platform.url) return acc;
+    const key = String(platform.key || "").trim();
+    if (!key) return acc;
+    const url = normalizeSocialUrl(key, platform.url);
+    if (!url) return acc;
+    acc[`${key}Url`] = url;
+    return acc;
+  }, {});
+};
+
+const normalizeSocialMediaStorage = (value) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      return normalizeSocialMediaStorage(JSON.parse(trimmed));
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(value) ? value : [];
+};
+
 const getPublic = async () => {
   const [general, socialMedia, contact] = await Promise.all([
     db.siteSetting.findOne({ where: { settingType: "general" } }),
@@ -56,12 +112,23 @@ const getPublic = async () => {
   ]);
 
   const generalData = normalizeSettingData(general?.data);
-  const socialMediaData = normalizeSettingData(socialMedia?.data);
+  const socialMediaData = normalizeSocialMediaData(socialMedia?.data);
   const contactData = normalizeSettingData(contact?.data);
+  const contactActive = contactData.status !== false;
   const whiteLogo = generalData.whiteLogo;
   const darkLogo = generalData.darkLogo;
   const faviconLogo = generalData.faviconLogo;
   const scrollText = generalData.scrollText;
+  const phone = contactActive
+    ? contactData.phone || contactData.phoneNumber || contactData.hotlineNumber || null
+    : null;
+  const email = contactActive
+    ? contactData.email || contactData.hotMail || null
+    : null;
+  const whatsappNumber = contactActive ? contactData.whatsappNumber || null : null;
+  const contactWhatsappUrl = whatsappNumber
+    ? `https://wa.me/${normalizePhoneForWhatsApp(whatsappNumber)}`
+    : null;
 
   return {
     name: generalData.name || null,
@@ -80,12 +147,24 @@ const getPublic = async () => {
     status: generalData.status ?? true,
     ...socialMediaData,
     ...contactData,
+    hotlineNumber: contactActive ? contactData.hotlineNumber || null : null,
+    hotMail: contactActive ? contactData.hotMail || null : null,
+    phoneNumber: contactActive ? contactData.phoneNumber || null : null,
+    phone,
+    email,
+    address: contactActive ? contactData.address || null : null,
+    whatsappNumber,
+    whatsappUrl: socialMediaData.whatsappUrl || contactWhatsappUrl,
+    mapLink: contactActive ? contactData.mapLink || null : null,
   };
 };
 
 const upsert = async (settingType, payload) => {
   const type = validateType(settingType);
-  const data = normalizeSettingData(payload?.data ?? payload);
+  const rawData = payload?.data ?? payload;
+  const data = type === "social_media"
+    ? normalizeSocialMediaStorage(rawData)
+    : normalizeSettingData(rawData);
   const [row] = await db.siteSetting.findOrCreate({
     where: { settingType: type },
     defaults: { settingType: type, data },

@@ -115,13 +115,10 @@ const getAllFromDBWithoutQuery = async () => {
 };
 
 const getPublicMenu = async () => {
-  const [categories, subcategories] = await Promise.all([
+  const [categories, subcategories, childcategories] = await Promise.all([
     Category.findAll({
       where: {
-        [Op.and]: [
-          { status: { [Op.ne]: "Inactive" } },
-          { isActive: { [Op.ne]: false } },
-        ],
+        status: { [Op.ne]: "Inactive" },
       },
       paranoid: true,
       order: [["sortOrder", "ASC"], ["createdAt", "DESC"]],
@@ -133,12 +130,30 @@ const getPublicMenu = async () => {
       order: [["createdAt", "DESC"]],
       raw: true,
     }),
+    db.childcategory.findAll({
+      where: { status: { [Op.ne]: "Inactive" } },
+      paranoid: true,
+      order: [["createdAt", "DESC"]],
+      raw: true,
+    }),
   ]);
+
+  const childcategoriesBySubcategory = childcategories.reduce((acc, childcategory) => {
+    const key = String(childcategory.subcategoryId || "");
+    if (!acc[key]) acc[key] = [];
+    acc[key].push({ Id: childcategory.Id, label: childcategory.name, name: childcategory.name });
+    return acc;
+  }, {});
 
   const subcategoriesByCategory = subcategories.reduce((acc, subcategory) => {
     const key = String(subcategory.categoryId || "");
     if (!acc[key]) acc[key] = [];
-    acc[key].push({ Id: subcategory.Id, label: subcategory.name, name: subcategory.name });
+    acc[key].push({
+      Id: subcategory.Id,
+      label: subcategory.name,
+      name: subcategory.name,
+      childItems: childcategoriesBySubcategory[String(subcategory.Id)] || [],
+    });
     return acc;
   }, {});
 

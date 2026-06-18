@@ -4,6 +4,20 @@ const db = require("../../../models");
 const ApiError = require("../../../error/ApiError");
 const M = () => db.websitePage;
 
+const toPageSlug = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const normalizeRow = (row) => {
+  const plain = typeof row?.toJSON === "function" ? row.toJSON() : row;
+  const slug = toPageSlug(plain?.name || plain?.title);
+  return { ...plain, slug };
+};
+
 const insertIntoDB = async (data) => M().create(data);
 
 const getAllFromDB = async (filters, options) => {
@@ -21,6 +35,28 @@ const getAllFromDB = async (filters, options) => {
 
 const getDataById = async (id) => M().findOne({ where: { Id: id } });
 
+const getPublicFromDB = async () => {
+  const rows = await M().findAll({
+    where: { status: { [Op.ne]: "Inactive" } },
+    paranoid: true,
+    order: [["createdAt", "ASC"], ["Id", "ASC"]],
+  });
+  const data = rows.map(normalizeRow).filter((page) => page.slug);
+  return { meta: { count: data.length, page: 1, limit: data.length }, data };
+};
+
+const getPublicBySlugFromDB = async (slug) => {
+  const normalizedSlug = toPageSlug(slug);
+  const rows = await M().findAll({
+    where: { status: { [Op.ne]: "Inactive" } },
+    paranoid: true,
+    order: [["createdAt", "ASC"], ["Id", "ASC"]],
+  });
+  const page = rows.map(normalizeRow).find((item) => item.slug === normalizedSlug);
+  if (!page) throw new ApiError(404, "Page not found");
+  return page;
+};
+
 const updateOneFromDB = async (id, payload) => {
   const row = await M().findOne({ where: { Id: id } });
   if (!row) throw new ApiError(404, "Page not found");
@@ -35,4 +71,13 @@ const deleteIdFromDB = async (id) => {
   return { deleted: true };
 };
 
-module.exports = { insertIntoDB, getAllFromDB, getDataById, updateOneFromDB, deleteIdFromDB };
+module.exports = {
+  toPageSlug,
+  insertIntoDB,
+  getAllFromDB,
+  getDataById,
+  getPublicFromDB,
+  getPublicBySlugFromDB,
+  updateOneFromDB,
+  deleteIdFromDB,
+};

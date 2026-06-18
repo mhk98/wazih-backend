@@ -22,6 +22,9 @@ const OrderStatusRoutes   = require("../modules/orderStatus/orderStatus.routes")
 const WebsitePageRoutes   = require("../modules/websitePage/websitePage.routes");
 const TagManagerRoutes    = require("../modules/tagManager/tagManager.routes");
 const FacebookPixelRoutes = require("../modules/facebookPixel/facebookPixel.routes");
+const TiktokPixelRoutes   = require("../modules/tiktokPixel/tiktokPixel.routes");
+const GoogleAdsRoutes     = require("../modules/googleAds/googleAds.routes");
+const TrackingRoutes      = require("../modules/tracking/tracking.routes");
 const CouponCodeRoutes    = require("../modules/couponCode/couponCode.routes");
 const VisitorStatRoutes        = require("../modules/visitorStat/visitorStat.routes");
 const SmsMarketingRoutes       = require("../modules/smsMarketing/smsMarketing.routes");
@@ -48,6 +51,7 @@ const moduleRoutes = [
   { path: "/supplier-history",     route: SupplierHistoryRoutes },
   { path: "/purchase-requisition", route: PurchaseRequisitionRoutes },
   { path: "/orders",               route: OrderRoutes },
+  { path: "/customer-order",        route: OrderRoutes },
   { path: "/charge-settings",      route: ChargeSettingRoutes },
   { path: "/ip-blocks",            route: IpBlockRoutes },
   { path: "/site-settings",        route: SiteSettingRoutes },
@@ -55,6 +59,9 @@ const moduleRoutes = [
   { path: "/website-pages",        route: WebsitePageRoutes },
   { path: "/tag-managers",         route: TagManagerRoutes },
   { path: "/facebook-pixels",      route: FacebookPixelRoutes },
+  { path: "/tiktok-pixels",        route: TiktokPixelRoutes },
+  { path: "/google-ads",           route: GoogleAdsRoutes },
+  { path: "/tracking",             route: TrackingRoutes },
   { path: "/coupon-codes",         route: CouponCodeRoutes },
   { path: "/visitor-stats",        route: VisitorStatRoutes },
   { path: "/sms-marketing",        route: SmsMarketingRoutes },

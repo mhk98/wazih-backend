@@ -118,6 +118,14 @@ db.facebookPixel = require("../app/modules/facebookPixel/facebookPixel.model")(
   db.sequelize,
   DataTypes,
 );
+db.tiktokPixel = require("../app/modules/tiktokPixel/tiktokPixel.model")(
+  db.sequelize,
+  DataTypes,
+);
+db.googleAds = require("../app/modules/googleAds/googleAds.model")(
+  db.sequelize,
+  DataTypes,
+);
 db.couponCode = require("../app/modules/couponCode/couponCode.model")(
   db.sequelize,
   DataTypes,
@@ -260,9 +268,15 @@ const ensureCategoryFrontendColumns = async () => {
     allowNull: false,
     defaultValue: "Active",
   });
-  await maybeAdd("imageFile", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("imageFile", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
   await maybeAdd("image", { type: DataTypes.TEXT("long"), allowNull: true });
-  await maybeAdd("bannerImage", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("bannerImage", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
   await maybeAdd("sortOrder", { type: DataTypes.INTEGER(10), allowNull: true });
   await maybeAdd("isActive", {
     type: DataTypes.BOOLEAN,
@@ -328,27 +342,55 @@ const ensureLandingPageContentColumns = async () => {
   await maybeAdd("product", { type: DataTypes.STRING, allowNull: true });
   await maybeAdd("title", { type: DataTypes.STRING, allowNull: false });
   await maybeAdd("subTitle", { type: DataTypes.STRING, allowNull: true });
-  await maybeAdd("bannerImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
-  await maybeAdd("prizeImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
-  await maybeAdd("reviewImages", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeAdd("bannerImageUrl", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
+  await maybeAdd("prizeImageUrl", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
+  await maybeAdd("reviewImages", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
   await maybeAdd("shortDescription", { type: DataTypes.TEXT, allowNull: true });
   await maybeAdd("video", { type: DataTypes.STRING(500), allowNull: true });
   await maybeAdd("reviewTitle", { type: DataTypes.STRING, allowNull: true });
-  await maybeAdd("descriptionTitle", { type: DataTypes.STRING, allowNull: true });
+  await maybeAdd("descriptionTitle", {
+    type: DataTypes.STRING,
+    allowNull: true,
+  });
   await maybeAdd("description", { type: DataTypes.TEXT, allowNull: true });
   await maybeAdd("whyChooseTitle", { type: DataTypes.STRING, allowNull: true });
   await maybeAdd("whyChooseUs", { type: DataTypes.TEXT, allowNull: true });
   await maybeAdd("price", { type: DataTypes.DECIMAL(10, 2), allowNull: true });
-  await maybeAdd("originalPrice", { type: DataTypes.DECIMAL(10, 2), allowNull: true });
+  await maybeAdd("originalPrice", {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+  });
   await maybeAdd("phone", { type: DataTypes.STRING, allowNull: true });
   await maybeAdd("template", { type: DataTypes.STRING, allowNull: true });
   await maybeAdd("countdown", { type: DataTypes.STRING(64), allowNull: true });
-  await maybeAdd("status", { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true });
+  await maybeAdd("status", {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  });
   await maybeAdd("deletedAt", { type: DataTypes.DATE, allowNull: true });
 
-  await maybeChange("bannerImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
-  await maybeChange("prizeImageUrl", { type: DataTypes.TEXT("long"), allowNull: true });
-  await maybeChange("reviewImages", { type: DataTypes.TEXT("long"), allowNull: true });
+  await maybeChange("bannerImageUrl", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
+  await maybeChange("prizeImageUrl", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
+  await maybeChange("reviewImages", {
+    type: DataTypes.TEXT("long"),
+    allowNull: true,
+  });
 };
 
 const ensureOrderIpAddressColumn = async () => {
@@ -361,6 +403,25 @@ const ensureOrderIpAddressColumn = async () => {
       allowNull: true,
     });
   }
+};
+
+const ensureOrderStatusColumn = async () => {
+  const queryInterface = db.sequelize.getQueryInterface();
+  const tableName = db.order.getTableName();
+  const tableDefinition = await queryInterface.describeTable(tableName);
+  if (!tableDefinition.status) {
+    await queryInterface.addColumn(tableName, "status", {
+      type: DataTypes.STRING(64),
+      allowNull: false,
+      defaultValue: "pending",
+    });
+    return;
+  }
+  await queryInterface.changeColumn(tableName, "status", {
+    type: DataTypes.STRING(64),
+    allowNull: false,
+    defaultValue: "pending",
+  });
 };
 
 const svgDataUrl = (svg) =>
@@ -457,7 +518,11 @@ const seedDefaultLandingPages = async () => {
       product: firstProduct?.name || "Attar & Perfume Combo Pack",
       title: "আতর পারফিউম কম্বো অফার",
       subTitle: "৫ পিস আতর, ৫ পিস পারফিউম এবং কাবাস কিসওয়াহ ফ্রি",
-      bannerImageUrl: campaignImage("#0f766e", "Attar Perfume Combo", "5 pcs attar + 5 pcs perfume"),
+      bannerImageUrl: campaignImage(
+        "#0f766e",
+        "Attar Perfume Combo",
+        "5 pcs attar + 5 pcs perfume",
+      ),
       prizeImageUrl: prizeImage("#2563eb", "R15 Dream Campaign"),
       reviewImages: JSON.stringify([
         reviewImage("#dc2626", "রাকিবুল ইসলাম"),
@@ -487,7 +552,11 @@ const seedDefaultLandingPages = async () => {
       product: secondProduct?.name || "Luxury Oud Gift Set",
       title: "লাক্সারি ওউদ গিফট ক্যাম্পেইন",
       subTitle: "ওউদ, আতর এবং gift-ready premium fragrance set",
-      bannerImageUrl: campaignImage("#7c2d12", "Luxury Oud Gift Set", "Premium gift-ready fragrance"),
+      bannerImageUrl: campaignImage(
+        "#7c2d12",
+        "Luxury Oud Gift Set",
+        "Premium gift-ready fragrance",
+      ),
       prizeImageUrl: prizeImage("#7c3aed", "Gift Reward Campaign"),
       reviewImages: JSON.stringify([
         reviewImage("#7c3aed", "সোহাগ হোসেন"),
@@ -529,7 +598,10 @@ const seedDefaultLandingPages = async () => {
   const newSeedTitles = landingPages.map((page) => page.title);
   const hasOnlySeedRows =
     existing.length === 0 ||
-    existing.every((row) => oldSeedTitles.includes(row.title) || newSeedTitles.includes(row.title));
+    existing.every(
+      (row) =>
+        oldSeedTitles.includes(row.title) || newSeedTitles.includes(row.title),
+    );
 
   if (hasOnlySeedRows) {
     await db.landingPage.destroy({ where: {}, force: true });
@@ -541,6 +613,55 @@ const seedDefaultLandingPages = async () => {
     landingPages.map((page) =>
       db.landingPage.findOrCreate({
         where: { title: page.title },
+        defaults: page,
+      }),
+    ),
+  );
+};
+
+const seedDefaultWebsitePages = async () => {
+  const pages = [
+    {
+      name: "About Us",
+      title: "About Us",
+      description:
+        "<p>Welcome to Kafela Mart. We are committed to delivering trusted products, smooth shopping, and friendly customer support across Bangladesh.</p><p>Our team checks every order carefully and works to make online shopping simple, reliable, and affordable for every customer.</p>",
+      status: "Active",
+    },
+    {
+      name: "How To order",
+      title: "How To order",
+      description:
+        "<p>Choose your product, add it to cart, and go to checkout. Fill in your name, phone number, address, and district, then confirm your order.</p><p>After placing the order, our support team may contact you for confirmation. You can also track your order from the Order Track page using your invoice ID or phone number.</p>",
+      status: "Active",
+    },
+    {
+      name: "Privacy Policy",
+      title: "Privacy Policy",
+      description:
+        "<p>We respect your privacy. Customer information such as name, phone number, address, and order details is used only to process orders, provide support, and improve our service.</p><p>We do not sell customer personal information to third parties. Necessary information may be shared with delivery or payment partners only for completing your order.</p>",
+      status: "Active",
+    },
+    {
+      name: "Terms & Conditions",
+      title: "শর্তাবলি (Terms & Conditions)",
+      description:
+        '<p class="policy-intro">এই ওয়েবসাইট ব্যবহার এবং আমাদের কাছ থেকে পণ্য/সেবা গ্রহণের মাধ্যমে আপনি আমাদের শর্তাবলি, নীতিমালা এবং ব্যবহার সংক্রান্ত নিয়মাবলি মেনে চলতে সম্মত হচ্ছেন। অনুগ্রহ করে অর্ডার করার আগে শর্তগুলো মনোযোগ দিয়ে পড়ুন।</p><section class="policy-section"><h2><span class="policy-step">১.</span><span class="policy-icon">📦</span> পণ্য ও অর্ডার</h2><ul><li>আমাদের ওয়েবসাইটে থাকা পণ্যের ছবি, রং, সাইজ বা বিবরণ বাস্তব পণ্যের সাথে সামান্য ভিন্ন হতে পারে।</li><li>অর্ডার করার সময় সঠিক নাম, ফোন নম্বর, ঠিকানা এবং জেলা প্রদান করা customer-এর দায়িত্ব।</li><li>স্টক, মূল্য, অফার বা delivery charge যেকোনো সময় পরিবর্তন হতে পারে।</li><li>ভুল তথ্য, সন্দেহজনক activity বা unavailable product হলে order confirm, hold বা cancel করার অধিকার আমাদের থাকবে।</li></ul></section><section class="policy-section"><h2><span class="policy-step">২.</span><span class="policy-icon">💳</span> মূল্য ও পেমেন্ট</h2><ul><li>পণ্যের মূল্য website বা checkout page-এ প্রদর্শিত price অনুযায়ী গণনা করা হবে।</li><li>Cash on Delivery, bKash, Nagad বা অন্যান্য available payment method ব্যবহার করা যাবে।</li><li>Payment করার সময় transaction number/proof সংরক্ষণ করা customer-এর দায়িত্ব।</li><li>ভুল payment, partial payment বা payment verification issue হলে order processing বিলম্ব হতে পারে।</li></ul></section><section class="policy-section"><h2><span class="policy-step">৩.</span><span class="policy-icon">🚚</span> শিপিং ও ডেলিভারি</h2><ul><li>Delivery charge admin panel-এ নির্ধারিত shipping charge অনুযায়ী প্রযোজ্য হবে।</li><li>Delivery time location, courier service এবং product availability অনুযায়ী পরিবর্তিত হতে পারে।</li><li>Customer unavailable থাকলে বা ভুল address/phone number দিলে পুনরায় delivery charge প্রযোজ্য হতে পারে।</li></ul></section><section class="policy-section"><h2><span class="policy-step">৪.</span><span class="policy-icon">🔐</span> গোপনীয়তা নীতি</h2><ul><li>Customer-এর personal information order process, delivery, payment verification এবং support-এর জন্য ব্যবহার করা হয়।</li><li>আমরা customer data বিক্রি করি না; প্রয়োজনীয় ক্ষেত্রে delivery/payment partner-এর সাথে সীমিত তথ্য share করা হতে পারে।</li><li>Website ব্যবহার করলে আপনি আমাদের Privacy Policy মেনে নিচ্ছেন।</li></ul></section><section class="policy-section"><h2><span class="policy-step">৫.</span><span class="policy-icon">⚖️</span> ব্যবহারের বিধিনিষেধ</h2><ul><li>ভুয়া order, ভুল তথ্য, spam বা fraudulent activity গ্রহণযোগ্য নয়।</li><li>Website বা system-এর কোনো ক্ষতি, misuse বা unauthorized access করার চেষ্টা নিষিদ্ধ।</li><li>Company প্রয়োজন মনে করলে customer account, order বা access সীমিত করতে পারে।</li></ul></section><section class="policy-section"><h2><span class="policy-step">৬.</span><span class="policy-icon">🔄</span> পরিবর্তন ও সংশোধন</h2><ul><li>আমরা যেকোনো সময় এই Terms & Conditions পরিবর্তন, সংশোধন বা update করার অধিকার রাখি।</li><li>পরিবর্তিত terms website-এ প্রকাশের পর থেকে কার্যকর হবে।</li><li>পরিবর্তনের পর website ব্যবহার করলে updated terms গ্রহণ করেছেন বলে গণ্য হবে।</li></ul></section><section class="policy-section"><h2><span class="policy-step">৭.</span><span class="policy-icon">📍</span> যোগাযোগ</h2><ul><li>এই শর্তাবলি সম্পর্কে কোনো প্রশ্ন থাকলে আমাদের support team-এর সাথে যোগাযোগ করুন।</li></ul></section>',
+      status: "Active",
+    },
+    {
+      name: "Refund & Return Policy",
+      title: "Refund & Return Policy (রিফান্ড ও রিটার্ন নীতিমালা)",
+      description:
+        '<p class="policy-intro">Sellpixer-এ আপনার সন্তুষ্টিই আমাদের প্রধান লক্ষ্য। কোনো কারণে আপনি যদি প্রোডাক্টটি নিয়ে সন্তুষ্ট না হন বা পণ্যে কোনো সমস্যা থাকে, তাহলে নিচের নীতিমালা অনুযায়ী রিটার্ন ও রিফান্ড প্রক্রিয়া সম্পন্ন করা হবে।</p><section class="policy-section"><h2><span class="policy-icon">🔄</span> পণ্য ফেরতের নীতিমালা:</h2><h3>যেসব ক্ষেত্রে পণ্য ফেরতযোগ্য:</h3><p>আপনি যদি ভুল পণ্য পেয়ে থাকেন বা অর্ডারকৃত পণ্যের ভিন্ন কোনো পণ্য পেয়ে থাকেন।</p><h3>ফেরতের শর্তাবলি:</h3><ul><li>পণ্যটি ব্যবহার করা হয়নি, ক্ষতিগ্রস্ত নয় এবং original packaging থাকতে হবে।</li><li>পণ্য গ্রহণের পর ২৪ ঘণ্টার মধ্যে রিটার্নের জন্য আমাদের অবহিত করতে হবে।</li><li>ফেরত পাঠানোর সময় invoice বা প্রয়োজনীয় proof সঙ্গে সংযুক্ত রাখতে হবে।</li></ul><h3>ফেরত প্রক্রিয়া:</h3><ul><li>আমাদের customer support team-এর সাথে যোগাযোগ করুন।</li><li>পণ্যের ছবি ও সমস্যার বিস্তারিত পাঠান।</li><li>যাচাই সম্পন্ন হলে return process শুরু করা হবে।</li></ul></section><section class="policy-section"><h2><span class="policy-icon">💰</span> রিফান্ড নীতিমালা:</h2><h3>রিফান্ডের ধরন:</h3><ul><li>রিটার্ন করা পণ্য যাচাই-বাছাইয়ের পর refund approval দেওয়া হবে।</li><li>বিকাশ/নগদ/ব্যাংক অথবা যেই মাধ্যমে payment করা হয়েছে, সেই মাধ্যমে refund করা হবে।</li></ul><h3>যেসব ক্ষেত্রে রিফান্ড প্রযোজ্য নয়:</h3><ul><li>পণ্য ব্যবহার বা ক্ষতিগ্রস্ত করার পর।</li><li>অর্ডার নিশ্চিত হওয়ার পরে customer mind change করলে।</li><li>ডেলিভারির সময় customer অনুপস্থিত থাকলে বা ভুল address/phone number প্রদান করলে delivery charge প্রযোজ্য হতে পারে।</li></ul></section><section class="policy-section"><h2><span class="policy-icon">📦</span> বিশেষ নির্দেশনা:</h2><ul><li><strong>রিটার্নের সময়সীমা:</strong> পণ্য হাতে পাওয়ার পর ২৪ ঘণ্টার মধ্যে অভিযোগ জানাতে হবে।</li><li><strong>রিফান্ডের সময়সীমা:</strong> verification সম্পন্ন হওয়ার পর ৭ কার্যদিবসের মধ্যে refund process করা হবে।</li><li><strong>কুরিয়ার চার্জ:</strong> seller-side issue হলে charge আমরা বহন করবো, অন্য ক্ষেত্রে courier charge customer-এর দায়িত্বে থাকতে পারে।</li></ul></section><p class="policy-note">ধন্যবাদ Sellpixer-এর সাথে থাকার জন্য। আপনার সন্তুষ্টি আমাদের অগ্রাধিকার। কোনো সমস্যায় আমাদের support team-এর সাথে যোগাযোগ করুন।</p>',
+      status: "Active",
+    },
+  ];
+
+  await Promise.all(
+    pages.map((page) =>
+      db.websitePage.findOrCreate({
+        where: { name: page.name },
         defaults: page,
       }),
     ),
@@ -563,8 +684,10 @@ db.sequelize
     await ensurePurchaseRequisitionItemsColumn();
     await ensurePurchaseRequisitionExtraColumns();
     await ensureOrderIpAddressColumn();
+    await ensureOrderStatusColumn();
     await ensureLandingPageContentColumns();
     await seedDefaultLandingPages();
+    await seedDefaultWebsitePages();
 
     // Initialize default role permissions
     const {

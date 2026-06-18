@@ -31,6 +31,21 @@ const getChargeSettings = catchAsync(async (req, res) => {
   });
 });
 
+const getPublicChargeSettings = catchAsync(async (req, res) => {
+  const filters = pick(req.query, ["chargeType", "searchTerm"]);
+  const result = await ChargeSettingService.getChargeSettings(filters, {
+    page: 1,
+    limit: 100,
+  });
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Public charge settings fetched successfully",
+    data: result.data,
+  });
+});
+
 const updateChargeSetting = catchAsync(async (req, res) => {
   const result = await ChargeSettingService.updateChargeSetting(
     req.params.id,
@@ -62,6 +77,7 @@ const deleteChargeSetting = catchAsync(async (req, res) => {
 module.exports = {
   createChargeSetting,
   getChargeSettings,
+  getPublicChargeSettings,
   updateChargeSetting,
   deleteChargeSetting,
 };
