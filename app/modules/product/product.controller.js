@@ -80,6 +80,26 @@ const getAllFromDBWithoutQuery = catchAsync(async (req, res) => {
   });
 });
 
+const getStorefrontProducts = catchAsync(async (req, res) => {
+  const result = await ProductService.getStorefrontProducts();
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Storefront products fetched!!",
+    data: result,
+  });
+});
+
+const getStorefrontProductById = catchAsync(async (req, res) => {
+  const result = await ProductService.getStorefrontProductById(req.params.id);
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Storefront product fetched!!",
+    data: result,
+  });
+});
+
 const ProductController = {
   getAllFromDB,
   insertIntoDB,
@@ -87,6 +107,8 @@ const ProductController = {
   getReceivedDataById,
   updateOneFromDB,
   deleteIdFromDB,
+  getStorefrontProducts,
+  getStorefrontProductById,
   getAllFromDBWithoutQuery,
 };
 

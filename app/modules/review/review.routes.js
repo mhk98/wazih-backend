@@ -4,6 +4,7 @@ const ReviewController = require("./review.controller");
 const router = require("express").Router();
 
 router.post("/create", auth(ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN, ENUM_USER_ROLE.ACCOUNTANT), ReviewController.insertIntoDB);
+router.get("/public", ReviewController.getPublicApprovedReviews);
 router.get("/", auth(), ReviewController.getAllFromDB);
 router.get("/all", auth(), ReviewController.getAllFromDBWithoutQuery);
 router.get("/:id", auth(), ReviewController.getDataById);

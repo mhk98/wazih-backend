@@ -4,6 +4,7 @@ const RolePermissionService = require("../modules/rolePermission/rolePermission.
 const db = require("../../models");
 
 const User = db.user;
+const normalizeRole = (role) => String(role || "").trim().toLowerCase();
 
 const auth =
   (...requiredRoles) =>
@@ -53,7 +54,10 @@ const auth =
         await RolePermissionService.getEffectiveMenuPermissions(plainUser.role);
 
       // Check if the user's role is one of the required roles
-      if (requiredRoles.length && !requiredRoles.includes(plainUser.role)) {
+      if (
+        requiredRoles.length &&
+        !requiredRoles.map(normalizeRole).includes(normalizeRole(plainUser.role))
+      ) {
         return next(new ApiError(403, "Forbidden"));
       }
 

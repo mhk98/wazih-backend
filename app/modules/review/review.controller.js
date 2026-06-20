@@ -21,6 +21,13 @@ const getAllFromDBWithoutQuery = catchAsync(async (req, res) => {
   sendResponse(res, { statusCode: 200, success: true, message: "Reviews fetched!", data: result });
 });
 
+const getPublicApprovedReviews = catchAsync(async (req, res) => {
+  const filters = pick(req.query, ["productId", "productName"]);
+  const options = pick(req.query, ["limit", "page"]);
+  const result = await ReviewService.getPublicApprovedReviews(filters, options);
+  sendResponse(res, { statusCode: 200, success: true, message: "Reviews fetched!", meta: result.meta, data: result.data });
+});
+
 const getDataById = catchAsync(async (req, res) => {
   const result = await ReviewService.getDataById(req.params.id);
   sendResponse(res, { statusCode: 200, success: true, message: "Review fetched!", data: result });
@@ -37,7 +44,7 @@ const deleteIdFromDB = catchAsync(async (req, res) => {
 });
 
 const ReviewController = {
-  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getDataById, updateOneFromDB, deleteIdFromDB,
+  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getPublicApprovedReviews, getDataById, updateOneFromDB, deleteIdFromDB,
 };
 
 module.exports = ReviewController;

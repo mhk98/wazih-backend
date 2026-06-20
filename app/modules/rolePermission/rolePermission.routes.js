@@ -19,6 +19,13 @@ router.post(
 );
 
 router.get(
+  "/available",
+  auth(),
+  requireRoles(ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN),
+  RolePermissionController.getAvailableMenuPermissions,
+);
+
+router.get(
   "/:role",
   auth(),
   requireRoles(ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN),

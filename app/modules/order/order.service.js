@@ -5,9 +5,29 @@ const paginationHelpers = require("../../../helpers/paginationHelper");
 const { ORDER_STATUS_VALUES, ORDER_SEARCHABLE_FIELDS } = require("./order.constants");
 const SiteSettingService = require("../siteSetting/siteSetting.service");
 const OrderStatusService = require("../orderStatus/orderStatus.service");
+const CouponCodeService = require("../couponCode/couponCode.service");
 
 const Order = db.order;
 const IpBlock = db.ipBlock;
+
+const LOOPBACK_IP_VARIANTS = [
+  "127.0.0.1",
+  "::1",
+  "0:0:0:0:0:0:0:1",
+  "localhost",
+];
+
+const normalizeIpAddress = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/^::ffff:/, "");
+
+const getIpVariants = (value) => {
+  const ip = normalizeIpAddress(value);
+  if (!ip) return [];
+  if (LOOPBACK_IP_VARIANTS.includes(ip)) return LOOPBACK_IP_VARIANTS;
+  return [...new Set([ip, String(value || "").trim()].filter(Boolean))];
+};
 
 const generateOrderId = async () => {
   const last = await Order.findOne({
@@ -71,7 +91,8 @@ const enforceOrderBlockLimit = async ({ customerPhone, ipAddress }) => {
   const since = new Date(Date.now() - blockTime * unitToMs(settings.timeUnit));
   const orConditions = [];
   if (customerPhone) orConditions.push({ customerPhone: String(customerPhone).trim() });
-  if (ipAddress) orConditions.push({ ipAddress: String(ipAddress).trim() });
+  const ipVariants = getIpVariants(ipAddress);
+  if (ipVariants.length) orConditions.push({ ipAddress: { [Op.in]: ipVariants } });
   if (!orConditions.length) return;
 
   const count = await Order.count({
@@ -88,6 +109,40 @@ const enforceOrderBlockLimit = async ({ customerPhone, ipAddress }) => {
       `Order limit reached. Please try again after ${blockTime} ${settings.timeUnit || "Hour"}.`,
     );
   }
+};
+
+const calculateItemsSubtotal = (items = []) =>
+  items.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0),
+    0,
+  );
+
+const applyOrderCoupon = async (payload = {}) => {
+  if (!Array.isArray(payload.items)) return payload;
+
+  const itemSubtotal = calculateItemsSubtotal(payload.items);
+  const subtotal = itemSubtotal > 0 ? itemSubtotal : Number(payload.subtotal || 0);
+  const deliveryCharge = Number(payload.deliveryCharge || 0);
+  let discount = 0;
+  let couponCode = null;
+
+  if (payload.couponCode) {
+    const appliedCoupon = await CouponCodeService.validateCoupon({
+      code: payload.couponCode,
+      subtotal,
+    });
+    discount = Number(appliedCoupon.discount || 0);
+    couponCode = appliedCoupon.code;
+  }
+
+  return {
+    ...payload,
+    subtotal,
+    deliveryCharge,
+    discount,
+    couponCode,
+    total: Math.max(0, subtotal + deliveryCharge - discount),
+  };
 };
 
 const normalizeCreatePayload = (payload) => {
@@ -134,16 +189,20 @@ const normalizeCreatePayload = (payload) => {
 };
 
 const createOrderInDB = async (payload) => {
-  const ipAddress = String(payload.ipAddress || "").trim();
+  const ipAddress = normalizeIpAddress(payload.ipAddress);
   if (ipAddress && IpBlock) {
-    const blockedIp = await IpBlock.findOne({ where: { ip: ipAddress }, paranoid: true });
+    const blockedIp = await IpBlock.findOne({
+      where: { ip: { [Op.in]: getIpVariants(ipAddress) } },
+      paranoid: true,
+    });
     if (blockedIp) {
       throw new ApiError(403, "Orders from this IP address are blocked");
     }
   }
   await enforceOrderBlockLimit({ customerPhone: payload.customerPhone, ipAddress });
   const orderId = await generateOrderId();
-  const order = await Order.create({ ...normalizeCreatePayload(payload), orderId });
+  const checkedPayload = await applyOrderCoupon({ ...payload, ipAddress });
+  const order = await Order.create({ ...normalizeCreatePayload(checkedPayload), orderId });
   return toPublicOrder(order);
 };
 

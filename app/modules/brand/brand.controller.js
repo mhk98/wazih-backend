@@ -21,6 +21,11 @@ const getAllFromDBWithoutQuery = catchAsync(async (req, res) => {
   sendResponse(res, { statusCode: 200, success: true, message: "Brands fetched!", data: result });
 });
 
+const getPublicBrands = catchAsync(async (req, res) => {
+  const result = await BrandService.getPublicBrands();
+  sendResponse(res, { statusCode: 200, success: true, message: "Public brands fetched!", data: result });
+});
+
 const getDataById = catchAsync(async (req, res) => {
   const result = await BrandService.getDataById(req.params.id);
   sendResponse(res, { statusCode: 200, success: true, message: "Brand fetched!", data: result });
@@ -37,7 +42,7 @@ const deleteIdFromDB = catchAsync(async (req, res) => {
 });
 
 const BrandController = {
-  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getDataById, updateOneFromDB, deleteIdFromDB,
+  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getPublicBrands, getDataById, updateOneFromDB, deleteIdFromDB,
 };
 
 module.exports = BrandController;

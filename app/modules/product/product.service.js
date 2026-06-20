@@ -442,6 +442,122 @@ const getReceivedDataById = async (id) => {
   return result;
 };
 
+const parseJsonArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const getNameMap = async (Model, ids) => {
+  const cleanIds = [...new Set(ids.filter(Boolean).map((id) => Number(id)))];
+  if (!Model || !cleanIds.length) return new Map();
+  const rows = await Model.findAll({
+    attributes: ["Id", "name"],
+    where: { Id: { [Op.in]: cleanIds } },
+    paranoid: true,
+    raw: true,
+  });
+  return new Map(rows.map((row) => [Number(row.Id), row.name]));
+};
+
+const listValue = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return value ? [value] : [];
+    }
+  }
+  return value ? [value] : [];
+};
+
+const toStorefrontProduct = (product, maps = {}) => {
+  const plain = product.toJSON ? product.toJSON() : product;
+  const variations = plain.variations || [];
+  const firstVariation = variations[0] || {};
+  const images = parseJsonArray(plain.images);
+  const oldPrice = Number(firstVariation.oldPrice || firstVariation.purchasePrice || 0);
+  const newPrice = Number(firstVariation.newPrice || firstVariation.oldPrice || firstVariation.purchasePrice || 0);
+  const discount = oldPrice > 0 && newPrice > 0 && oldPrice > newPrice
+    ? Math.round(((oldPrice - newPrice) / oldPrice) * 100)
+    : 0;
+  const stock = variations.reduce((sum, item) => sum + Number(item.stock || 0), 0);
+
+  return {
+    Id: plain.Id,
+    name: plain.name,
+    category: maps.categories?.get(Number(plain.categoryId)) || null,
+    categoryId: plain.categoryId,
+    subCategory: maps.subcategories?.get(Number(plain.subcategoryId)) || null,
+    subCategoryId: plain.subcategoryId,
+    childCategory: maps.childcategories?.get(Number(plain.childcategoryId)) || null,
+    childCategoryId: plain.childcategoryId,
+    sale_price: newPrice,
+    original_price: oldPrice || newPrice,
+    discount,
+    quantity: stock,
+    file: images[0] || null,
+    gallery: images,
+    features: plain.shortDescription ? [plain.shortDescription] : [],
+    variants: variations.map((variation) => ({
+      size: listValue(variation.size),
+      color: listValue(variation.color),
+      weight: variation.weight || null,
+      unit: variation.unit || null,
+      oldPrice: variation.oldPrice,
+      newPrice: variation.newPrice,
+      stock: variation.stock,
+    })),
+    sku: plain.sku,
+    freeShipping: Boolean(plain.freeShipping),
+    inStock: stock > 0,
+    status: plain.status,
+  };
+};
+
+const getStorefrontProducts = async () => {
+  const products = await Product.findAll({
+    where: { status: { [Op.ne]: "Inactive" } },
+    include: [{ model: Variation, as: "variations" }],
+    paranoid: true,
+    order: [["createdAt", "DESC"]],
+  });
+
+  const [categories, subcategories, childcategories] = await Promise.all([
+    getNameMap(db.category, products.map((product) => product.categoryId)),
+    getNameMap(db.subcategory, products.map((product) => product.subcategoryId)),
+    getNameMap(db.childcategory, products.map((product) => product.childcategoryId)),
+  ]);
+
+  return products.map((product) =>
+    toStorefrontProduct(product, { categories, subcategories, childcategories }),
+  );
+};
+
+const getStorefrontProductById = async (id) => {
+  const product = await Product.findOne({
+    where: { Id: id, status: { [Op.ne]: "Inactive" } },
+    include: [{ model: Variation, as: "variations" }],
+    paranoid: true,
+  });
+  if (!product) return null;
+
+  const [categories, subcategories, childcategories] = await Promise.all([
+    getNameMap(db.category, [product.categoryId]),
+    getNameMap(db.subcategory, [product.subcategoryId]),
+    getNameMap(db.childcategory, [product.childcategoryId]),
+  ]);
+
+  return toStorefrontProduct(product, { categories, subcategories, childcategories });
+};
+
 const ProductService = {
   getAllFromDB,
   insertIntoDB,
@@ -449,6 +565,8 @@ const ProductService = {
   updateOneFromDB,
   getDataById,
   getReceivedDataById,
+  getStorefrontProducts,
+  getStorefrontProductById,
   getAllFromDBWithoutQuery,
 };
 

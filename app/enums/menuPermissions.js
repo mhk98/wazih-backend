@@ -89,7 +89,35 @@ const MENU_PERMISSIONS = {
 
 const ALL_MENU_PERMISSIONS = Object.values(MENU_PERMISSIONS);
 
+const WAZIH_DASHBOARD_MENU_PERMISSIONS = [
+  "dashboard",
+  "orders",
+  "products",
+  "supplier",
+  "purchase",
+  "landing_page",
+  "admin_user",
+  "admin_roles",
+  "admin_permissions",
+  "customers",
+  "ip_block",
+  "website_setting",
+  "api_integration",
+  "marketing_tools",
+  "blogs",
+  "banner_ads",
+  "expense",
+  "reports",
+  "cache_clear",
+];
+
+const ALL_VALID_MENU_PERMISSIONS = [
+  ...new Set([...ALL_MENU_PERMISSIONS, ...WAZIH_DASHBOARD_MENU_PERMISSIONS]),
+];
+
 module.exports = {
   MENU_PERMISSIONS,
   ALL_MENU_PERMISSIONS,
+  WAZIH_DASHBOARD_MENU_PERMISSIONS,
+  ALL_VALID_MENU_PERMISSIONS,
 };

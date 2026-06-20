@@ -1,5 +1,6 @@
 const express = require("express");
 const UserRoutes = require("../modules/user/user.routes");
+const CustomerRoutes = require("../modules/customer/customer.routes");
 const RolePermissionRoutes = require("../modules/rolePermission/rolePermission.routes");
 const ProductRoutes = require("../modules/product/product.routes");
 const VariationRoutes = require("../modules/variation/variation.routes");
@@ -24,6 +25,8 @@ const TagManagerRoutes    = require("../modules/tagManager/tagManager.routes");
 const FacebookPixelRoutes = require("../modules/facebookPixel/facebookPixel.routes");
 const TiktokPixelRoutes   = require("../modules/tiktokPixel/tiktokPixel.routes");
 const GoogleAdsRoutes     = require("../modules/googleAds/googleAds.routes");
+const BannerCategoryRoutes = require("../modules/bannerCategory/bannerCategory.routes");
+const BannerRoutes        = require("../modules/banner/banner.routes");
 const TrackingRoutes      = require("../modules/tracking/tracking.routes");
 const CouponCodeRoutes    = require("../modules/couponCode/couponCode.routes");
 const VisitorStatRoutes        = require("../modules/visitorStat/visitorStat.routes");
@@ -36,6 +39,7 @@ const router = express.Router();
 
 const moduleRoutes = [
   { path: "/user",                 route: UserRoutes },
+  { path: "/customer",             route: CustomerRoutes },
   { path: "/role-permissions",     route: RolePermissionRoutes },
   { path: "/product",              route: ProductRoutes },
   { path: "/variation",            route: VariationRoutes },
@@ -61,6 +65,8 @@ const moduleRoutes = [
   { path: "/facebook-pixels",      route: FacebookPixelRoutes },
   { path: "/tiktok-pixels",        route: TiktokPixelRoutes },
   { path: "/google-ads",           route: GoogleAdsRoutes },
+  { path: "/banner-categories",    route: BannerCategoryRoutes },
+  { path: "/banners",              route: BannerRoutes },
   { path: "/tracking",             route: TrackingRoutes },
   { path: "/coupon-codes",         route: CouponCodeRoutes },
   { path: "/visitor-stats",        route: VisitorStatRoutes },

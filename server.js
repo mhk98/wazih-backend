@@ -36,6 +36,8 @@ app.use(
 ======================== */
 
 const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:3001",
   "http://localhost:5173",
   "https://kafelamart.digitalever.com.bd",
   "https://www.kafelamart.digitalever.com.bd",
@@ -44,7 +46,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
 ];
 
 const ALLOWED_ORIGINS = new Set(
-  (process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(","))
+  `${DEFAULT_ALLOWED_ORIGINS.join(",")},${process.env.ALLOWED_ORIGINS || ""}`
     .split(",")
     .map((origin) => origin.trim().replace(/\/+$/, ""))
     .filter(Boolean),
@@ -56,11 +58,13 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     const normalizedOrigin = origin.replace(/\/+$/, "");
-    if (ALLOWED_ORIGINS.has(normalizedOrigin)) return callback(null, true);
+    if (ALLOWED_ORIGINS.has(normalizedOrigin)) return callback(null, normalizedOrigin);
 
     return callback(null, false);
   },
   credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204,
 };
 

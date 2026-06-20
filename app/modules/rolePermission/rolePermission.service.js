@@ -3,17 +3,26 @@ const db = require("../../../models");
 const {
   DEFAULT_ROLE_MENU_PERMISSIONS,
 } = require("../../config/roleMenuPermissions");
-const { ALL_MENU_PERMISSIONS } = require("../../enums/menuPermissions");
+const {
+  ALL_VALID_MENU_PERMISSIONS,
+  WAZIH_DASHBOARD_MENU_PERMISSIONS,
+} = require("../../enums/menuPermissions");
 const { ENUM_USER_ROLE } = require("../../enums/user");
 
 const RolePermission = db.rolePermission;
 
-const validMenuPermissionSet = new Set(ALL_MENU_PERMISSIONS);
-const protectedRoles = new Set([ENUM_USER_ROLE.SUPER_ADMIN]);
+const validMenuPermissionSet = new Set(ALL_VALID_MENU_PERMISSIONS);
+const manageableMenuPermissionSet = new Set(WAZIH_DASHBOARD_MENU_PERMISSIONS);
+const protectedRoleKeys = new Set(
+  [ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.USER].map((role) =>
+    role.toLowerCase(),
+  ),
+);
 
 const uniq = (items = []) => [...new Set(items)];
 
 const normalizeRole = (role) => String(role || "").trim();
+const normalizeRoleKey = (role) => normalizeRole(role).toLowerCase();
 
 const validateRoleName = (role) => {
   const normalizedRole = normalizeRole(role);
@@ -38,6 +47,31 @@ const LEGACY_PERMISSION_ALIASES = {
   designation_management: "department_designation",
 };
 
+const LEGACY_TO_WAZIH_PERMISSION_ALIASES = {
+  overview: ["dashboard"],
+  sale: ["orders"],
+  product: ["products"],
+  item: ["products"],
+  stock_product: ["products"],
+  supplier: ["supplier"],
+  purchase: ["purchase"],
+  purchase_requisition: ["purchase"],
+  user_management: ["admin_user"],
+  role_permissions: ["admin_roles", "admin_permissions"],
+  settings: ["website_setting"],
+  logo: ["website_setting"],
+  cod_change: ["website_setting"],
+  cod_charge: ["website_setting"],
+  delivery_advance: ["website_setting"],
+  delivery_charge: ["website_setting"],
+  marketing: ["marketing_tools"],
+  ads_campaign_kpi: ["marketing_tools"],
+  profit_loss: ["reports"],
+  auto_profit_loss: ["reports"],
+  stock_alert: ["reports"],
+  log_history: ["reports"],
+};
+
 const expandLegacyPermissions = (permissions = []) => {
   const expanded = new Set(permissions);
   permissions.forEach((key) => {
@@ -45,6 +79,25 @@ const expandLegacyPermissions = (permissions = []) => {
     if (mapped) expanded.add(mapped);
   });
   return Array.from(expanded);
+};
+
+const toManageableMenuPermissions = (permissions = []) => {
+  const manageable = new Set();
+
+  normalizeMenuPermissions(permissions).forEach((permission) => {
+    const normalizedPermission = sanitizePermission(permission);
+    if (manageableMenuPermissionSet.has(normalizedPermission)) {
+      manageable.add(normalizedPermission);
+    }
+
+    (LEGACY_TO_WAZIH_PERMISSION_ALIASES[normalizedPermission] || []).forEach(
+      (mappedPermission) => manageable.add(mappedPermission),
+    );
+  });
+
+  return WAZIH_DASHBOARD_MENU_PERMISSIONS.filter((permission) =>
+    manageable.has(permission),
+  );
 };
 
 const sanitizePermission = (permission) => {
@@ -198,13 +251,20 @@ const getAllRolePermissions = async () => {
   return records.map((record) => ({
     Id: record.Id,
     role: record.role,
-    menuPermissions: validateMenuPermissions(
-      includeNewSettingsChildren(record.role, record.menuPermissions || []),
-    ),
+    menuPermissions:
+      normalizeRoleKey(record.role) === normalizeRoleKey(ENUM_USER_ROLE.SUPER_ADMIN)
+        ? getAvailableMenuPermissions()
+        : toManageableMenuPermissions(
+            validateMenuPermissions(
+              includeNewSettingsChildren(record.role, record.menuPermissions || []),
+            ),
+          ),
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   }));
 };
+
+const getAvailableMenuPermissions = () => WAZIH_DASHBOARD_MENU_PERMISSIONS;
 
 const getRolePermissionByRole = async (role) => {
   const normalizedRole = validateRoleName(role);
@@ -215,7 +275,10 @@ const getRolePermissionByRole = async (role) => {
   return {
     Id: record?.Id,
     role: normalizedRole,
-    menuPermissions: await getEffectiveMenuPermissions(normalizedRole),
+    menuPermissions:
+      normalizeRoleKey(normalizedRole) === normalizeRoleKey(ENUM_USER_ROLE.SUPER_ADMIN)
+        ? getAvailableMenuPermissions()
+        : toManageableMenuPermissions(await getEffectiveMenuPermissions(normalizedRole)),
   };
 };
 
@@ -243,27 +306,60 @@ const createRolePermissions = async (payload = {}) => {
 
 const deleteRolePermissions = async (role) => {
   const normalizedRole = validateRoleName(role);
-  if (protectedRoles.has(normalizedRole)) {
+  if (protectedRoleKeys.has(normalizeRoleKey(normalizedRole))) {
     throw new ApiError(400, "This role cannot be deleted");
   }
 
-  const assignedUsers = db.user
-    ? await db.user.count({ where: { role: normalizedRole }, paranoid: true })
-    : 0;
-  if (assignedUsers > 0) {
-    throw new ApiError(400, "Role is assigned to users and cannot be deleted");
+  const transaction = await db.sequelize.transaction();
+  let reassignedUsers = 0;
+  let deleted = 0;
+
+  try {
+    if (db.user) {
+      const [updatedCount] = await db.user.update(
+        { role: ENUM_USER_ROLE.USER },
+        {
+          where: { role: normalizedRole },
+          paranoid: true,
+          transaction,
+        },
+      );
+      reassignedUsers = updatedCount;
+    }
+
+    deleted = await RolePermission.destroy({
+      where: { role: normalizedRole },
+      transaction,
+    });
+
+    if (!deleted) throw new ApiError(404, "Role not found");
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
   }
 
-  const deleted = await RolePermission.destroy({ where: { role: normalizedRole } });
   if (!deleted) throw new ApiError(404, "Role not found");
-  return { deleted: true };
+  return { deleted: true, reassignedUsers };
 };
 
 const hasMenuPermission = (userPermissions = [], requiredPermission) => {
   const alias = LEGACY_PERMISSION_ALIASES[requiredPermission];
+  const wazihAliases = {
+    user_management: ["admin_user", "admin_roles", "admin_permissions"],
+    cod_change: ["website_setting"],
+    cod_charge: ["website_setting"],
+    delivery_advance: ["website_setting"],
+    delivery_charge: ["website_setting"],
+  };
+
   return (
     userPermissions.includes(requiredPermission) ||
     (alias ? userPermissions.includes(alias) : false) ||
+    (wazihAliases[requiredPermission] || []).some((permission) =>
+      userPermissions.includes(permission),
+    ) ||
     // Also allow legacy keys to satisfy the canonical permission check.
     (requiredPermission === "department_designation" &&
       (userPermissions.includes("department_management") ||
@@ -281,6 +377,7 @@ module.exports = {
   deleteRolePermissions,
   getEffectiveMenuPermissions,
   getDefaultPermissionsForRole,
+  getAvailableMenuPermissions,
   validateMenuPermissions,
   validateRole,
   validateRoleName,

@@ -4,13 +4,38 @@ const db = require("../../../models");
 const ApiError = require("../../../error/ApiError");
 const M = () => db.couponCode;
 
-const insertIntoDB = async (data) => M().create(data);
-
-const normalizeCode = (code) => String(code || "").trim();
+const normalizeCode = (code) => String(code || "").trim().toUpperCase();
 
 const parseAmount = (value) => {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number : 0;
+};
+
+const normalizeStatus = (status) => {
+  const value = String(status || "Active").trim().toLowerCase();
+  return value === "inactive" ? "Inactive" : "Active";
+};
+
+const normalizeType = (type) => {
+  const value = String(type || "Percentage").trim().toLowerCase();
+  return value.startsWith("fixed") ? "Fixed" : "Percentage";
+};
+
+const normalizePayload = (data = {}) => ({
+  ...data,
+  code: normalizeCode(data.code),
+  type: normalizeType(data.type),
+  amount: parseAmount(data.amount),
+  buyAmount: parseAmount(data.buyAmount),
+  status: normalizeStatus(data.status),
+});
+
+const insertIntoDB = async (data) => {
+  const payload = normalizePayload(data);
+  if (!payload.code) throw new ApiError(400, "Coupon code is required");
+  const exists = await M().findOne({ where: { code: payload.code }, paranoid: true });
+  if (exists) throw new ApiError(409, "Coupon code already exists");
+  return M().create(payload);
 };
 
 const validateCoupon = async ({ code, subtotal }) => {
@@ -61,7 +86,7 @@ const validateCoupon = async ({ code, subtotal }) => {
 const getAllFromDB = async (filters, options) => {
   const { page, limit, skip } = paginationHelpers.calculatePagination(options);
   const { searchTerm } = filters || {};
-  const where = searchTerm ? { code: { [Op.like]: `%${searchTerm}%` } } : {};
+  const where = searchTerm ? { code: { [Op.like]: `%${normalizeCode(searchTerm)}%` } } : {};
   const [data, count] = await Promise.all([
     M().findAll({ where, offset: skip, limit, paranoid: true, order: [["createdAt", "DESC"]] }),
     M().count({ where }),
@@ -72,7 +97,13 @@ const getAllFromDB = async (filters, options) => {
 const updateOneFromDB = async (id, payload) => {
   const row = await M().findOne({ where: { Id: id } });
   if (!row) throw new ApiError(404, "Coupon not found");
-  await row.update(payload);
+  const data = normalizePayload({ ...row.get({ plain: true }), ...payload });
+  const duplicate = await M().findOne({
+    where: { code: data.code, Id: { [Op.ne]: id } },
+    paranoid: true,
+  });
+  if (duplicate) throw new ApiError(409, "Coupon code already exists");
+  await row.update(data);
   return row;
 };
 

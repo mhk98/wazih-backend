@@ -45,6 +45,24 @@ const getAllFromDBWithoutQuery = async () => {
   return await Brand.findAll({ paranoid: true, order: [["createdAt", "DESC"]] });
 };
 
+const getPublicBrands = async () => {
+  const rows = await Brand.findAll({
+    where: { status: "Active" },
+    paranoid: true,
+    order: [["createdAt", "DESC"]],
+  });
+
+  return rows
+    .filter((brand) => brand.logo)
+    .map((brand) => ({
+      Id: brand.Id,
+      name: brand.name,
+      file: brand.logo,
+      linkUrl: null,
+      sortOrder: brand.Id,
+    }));
+};
+
 const getDataById = async (id) => {
   return await Brand.findOne({ where: { Id: id } });
 };
@@ -58,7 +76,7 @@ const deleteIdFromDB = async (id) => {
 };
 
 const BrandService = {
-  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getDataById, updateOneFromDB, deleteIdFromDB,
+  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getPublicBrands, getDataById, updateOneFromDB, deleteIdFromDB,
 };
 
 module.exports = BrandService;

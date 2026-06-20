@@ -126,6 +126,15 @@ db.googleAds = require("../app/modules/googleAds/googleAds.model")(
   db.sequelize,
   DataTypes,
 );
+db.bannerCategory =
+  require("../app/modules/bannerCategory/bannerCategory.model")(
+    db.sequelize,
+    DataTypes,
+  );
+db.banner = require("../app/modules/banner/banner.model")(
+  db.sequelize,
+  DataTypes,
+);
 db.couponCode = require("../app/modules/couponCode/couponCode.model")(
   db.sequelize,
   DataTypes,
@@ -152,6 +161,16 @@ db.supplier.hasMany(db.supplierHistory, { foreignKey: "supplierId" });
 db.supplierHistory.belongsTo(db.supplier, {
   foreignKey: "supplierId",
   as: "supplier",
+});
+
+// Banner <-> BannerCategory
+db.bannerCategory.hasMany(db.banner, {
+  foreignKey: "categoryId",
+  as: "banners",
+});
+db.banner.belongsTo(db.bannerCategory, {
+  foreignKey: "categoryId",
+  as: "category",
 });
 
 // Supplier <-> PurchaseRequisition
@@ -668,6 +687,27 @@ const seedDefaultWebsitePages = async () => {
   );
 };
 
+const seedDefaultBannerCategories = async () => {
+  if (!db.bannerCategory) return;
+
+  const categories = [
+    { name: "Nazmul Hasan", sortOrder: 1 },
+    { name: "Welcome to Sellpixer", sortOrder: 2 },
+    { name: "Popup Banner", sortOrder: 3 },
+    { name: "Slider Right (375px X 175px)", sortOrder: 4 },
+    { name: "Main Slider (775px x 400px)", sortOrder: 5 },
+  ];
+
+  await Promise.all(
+    categories.map((category) =>
+      db.bannerCategory.findOrCreate({
+        where: { name: category.name },
+        defaults: { ...category, status: "Active" },
+      }),
+    ),
+  );
+};
+
 // =====================
 // Sync
 // =====================
@@ -688,6 +728,7 @@ db.sequelize
     await ensureLandingPageContentColumns();
     await seedDefaultLandingPages();
     await seedDefaultWebsitePages();
+    await seedDefaultBannerCategories();
 
     // Initialize default role permissions
     const {

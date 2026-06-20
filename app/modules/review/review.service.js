@@ -50,6 +50,38 @@ const getAllFromDBWithoutQuery = async () => {
   return await Review.findAll({ paranoid: true, order: [["createdAt", "DESC"]] });
 };
 
+const getPublicApprovedReviews = async (filters = {}, options = {}) => {
+  const { page, limit, skip } = paginationHelpers.calculatePagination({
+    page: options.page || 1,
+    limit: options.limit || 20,
+  });
+  const andConditions = [{ status: "approved" }];
+
+  const productMatch = [];
+  if (filters.productId) {
+    productMatch.push({ productId: { [Op.eq]: filters.productId } });
+  }
+  if (filters.productName) {
+    productMatch.push({ productName: { [Op.like]: `%${filters.productName}%` } });
+  }
+  if (productMatch.length) {
+    andConditions.push({ [Op.or]: productMatch });
+  }
+
+  const whereConditions = { [Op.and]: andConditions };
+  const data = await Review.findAll({
+    where: whereConditions,
+    offset: skip,
+    limit,
+    paranoid: true,
+    attributes: ["Id", "productId", "productName", "customerName", "rating", "comment", "createdAt"],
+    order: [["createdAt", "DESC"]],
+  });
+  const count = await Review.count({ where: whereConditions });
+
+  return { meta: { count, page, limit }, data };
+};
+
 const getDataById = async (id) => {
   return await Review.findOne({ where: { Id: id } });
 };
@@ -63,7 +95,7 @@ const deleteIdFromDB = async (id) => {
 };
 
 const ReviewService = {
-  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getDataById, updateOneFromDB, deleteIdFromDB,
+  insertIntoDB, getAllFromDB, getAllFromDBWithoutQuery, getPublicApprovedReviews, getDataById, updateOneFromDB, deleteIdFromDB,
 };
 
 module.exports = ReviewService;

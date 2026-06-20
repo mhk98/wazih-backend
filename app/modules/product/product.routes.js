@@ -20,6 +20,8 @@ router.get(
   // auth(),
   ProductController.getAllFromDB,
 );
+router.get("/storefront", ProductController.getStorefrontProducts);
+router.get("/storefront/:id", ProductController.getStorefrontProductById);
 router.get("/all", auth(), ProductController.getAllFromDBWithoutQuery);
 router.get("/stock/:id", auth(), ProductController.getDataById);
 router.get("/:id", auth(), ProductController.getReceivedDataById);
