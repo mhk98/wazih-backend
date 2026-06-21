@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const ApiError = require("../../../error/ApiError");
 const FacebookPixelService = require("../facebookPixel/facebookPixel.service");
 const TiktokPixelService = require("../tiktokPixel/tiktokPixel.service");
 const GoogleAdsService = require("../googleAds/googleAds.service");
@@ -8,6 +9,20 @@ const hash = (value) => {
   if (!normalized) return undefined;
   return crypto.createHash("sha256").update(normalized).digest("hex");
 };
+
+const hashPhone = (value) => hash(String(value || "").replace(/\D/g, ""));
+const asHashArray = (value) => value ? [value] : undefined;
+
+const PLATFORM_EVENT_NAMES = {
+  PageView: { meta: "PageView", tiktok: "Pageview" },
+  ViewContent: { meta: "ViewContent", tiktok: "ViewContent" },
+  InitiateCheckout: { meta: "InitiateCheckout", tiktok: "InitiateCheckout" },
+  AddToCart: { meta: "AddToCart", tiktok: "AddToCart" },
+  Purchase: { meta: "Purchase", tiktok: "CompletePayment" },
+};
+
+const getPlatformEventName = (eventName, platform) =>
+  PLATFORM_EVENT_NAMES[eventName]?.[platform] || eventName;
 
 const clean = (obj) =>
   Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined && value !== null && value !== ""));
@@ -31,10 +46,10 @@ const toMetaEvent = ({ eventName, eventId, eventSourceUrl, userData, customData,
   user_data: clean({
     client_ip_address: ipAddress,
     client_user_agent: userAgent,
-    em: hash(userData?.email),
-    ph: hash(userData?.phone),
-    fn: hash(userData?.firstName || userData?.name),
-    external_id: hash(userData?.customerId),
+    em: asHashArray(hash(userData?.email)),
+    ph: asHashArray(hashPhone(userData?.phone)),
+    fn: asHashArray(hash(userData?.firstName || userData?.name)),
+    external_id: asHashArray(hash(userData?.customerId)),
     fbp: userData?.fbp,
     fbc: userData?.fbc,
   }),
@@ -47,9 +62,14 @@ const sendMeta = async (payload, context) => {
   for (const pixel of pixels) {
     const row = pixel.toJSON();
     if (!row.pixelsId || !row.metaAccessToken) continue;
-    const url = `https://graph.facebook.com/v19.0/${encodeURIComponent(row.pixelsId)}/events?access_token=${encodeURIComponent(row.metaAccessToken)}`;
+    const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
+    const url = `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(row.pixelsId)}/events?access_token=${encodeURIComponent(row.metaAccessToken)}`;
     const body = {
-      data: [toMetaEvent({ ...payload, ...context })],
+      data: [toMetaEvent({
+        ...payload,
+        eventName: getPlatformEventName(payload.eventName, "meta"),
+        ...context,
+      })],
       ...(row.testEventId ? { test_event_code: row.testEventId } : {}),
     };
     results.push({ platform: "meta", pixelId: row.pixelsId, ...(await postJson(url, body)) });
@@ -57,23 +77,21 @@ const sendMeta = async (payload, context) => {
   return results;
 };
 
-const toTiktokEvent = ({ eventName, eventId, eventSourceUrl, userData, customData, ipAddress, userAgent }) => ({
-  event: eventName,
+const toTiktokEvent = ({ eventName, eventId, eventSourceUrl, referrerUrl, userData, customData, ipAddress, userAgent }) => ({
+  event: getPlatformEventName(eventName, "tiktok"),
   event_id: eventId,
-  timestamp: new Date().toISOString(),
-  context: {
-    page: { url: eventSourceUrl },
-    user: clean({
-      ip: ipAddress,
-      user_agent: userAgent,
-      email: hash(userData?.email),
-      phone_number: hash(userData?.phone),
-      external_id: hash(userData?.customerId),
-      ttclid: userData?.ttclid,
-      ttp: userData?.ttp,
-    }),
-  },
+  event_time: Math.floor(Date.now() / 1000),
+  user: clean({
+    ip: ipAddress,
+    user_agent: userAgent,
+    email: hash(userData?.email),
+    phone: hashPhone(userData?.phone),
+    external_id: hash(userData?.customerId),
+    ttclid: userData?.ttclid,
+    ttp: userData?.ttp,
+  }),
   properties: clean(customData || {}),
+  page: clean({ url: eventSourceUrl, referrer: referrerUrl }),
 });
 
 const sendTiktok = async (payload, context) => {
@@ -111,10 +129,10 @@ const getPublicConfig = async () => {
 
 const trackEvent = async (payload, req) => {
   const eventName = String(payload.eventName || "").trim();
-  if (!eventName) throw new Error("eventName is required");
+  if (!eventName) throw new ApiError(400, "eventName is required");
   const eventId = payload.eventId || `${eventName}.${Date.now()}.${Math.random().toString(16).slice(2)}`;
   const context = {
-    ipAddress: req.ip || req.headers["x-forwarded-for"]?.split(",")[0],
+    ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip,
     userAgent: req.headers["user-agent"],
   };
   const basePayload = { ...payload, eventName, eventId };

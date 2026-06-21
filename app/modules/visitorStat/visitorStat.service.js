@@ -19,6 +19,12 @@ const pruneExpired = () => {
   }
 };
 
+const clearRuntimeCache = () => {
+  const clearedEntries = activeVisitorMap.size;
+  activeVisitorMap.clear();
+  return { cache: "activeVisitors", clearedEntries };
+};
+
 const track = async (ip) => {
   activeVisitorMap.set(ip || "unknown", Date.now());
 
@@ -65,4 +71,4 @@ const getStats = async () => {
   };
 };
 
-module.exports = { track, getStats };
+module.exports = { track, getStats, clearRuntimeCache };

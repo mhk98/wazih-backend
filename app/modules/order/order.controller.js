@@ -80,7 +80,7 @@ const updateOrder = catchAsync(async (req, res) => {
 });
 
 const updateOrderStatus = catchAsync(async (req, res) => {
-  const result = await OrderService.updateOrderStatusInDB(req.params.id, req.body.status);
+  const result = await OrderService.updateOrderStatusInDB(req.params.id, req.body.status, req.user.Id);
   sendResponse(res, {
     statusCode: 200,
     success: true,

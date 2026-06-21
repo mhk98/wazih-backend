@@ -3,7 +3,7 @@ const ApiError = require("../../../error/ApiError");
 
 const VALID_TYPES = [
   "general", "social_media", "contact",
-  "courier_api", "payment_gateway", "sms_gateway", "fraud_checker",
+  "courier_api", "payment_gateway", "sms_gateway", "fraud_checker", "header", "footer",
 ];
 
 const validateType = (settingType) => {
@@ -14,7 +14,13 @@ const validateType = (settingType) => {
 
 const getByType = async (settingType) => {
   const type = validateType(settingType);
-  return db.siteSetting.findOne({ where: { settingType: type } });
+  const row = await db.siteSetting.findOne({ where: { settingType: type } });
+  if (!row) return null;
+  const plain = row.get({ plain: true });
+  plain.data = type === "social_media"
+    ? normalizeSocialMediaStorage(plain.data)
+    : normalizeSettingData(plain.data);
+  return plain;
 };
 
 const isNumericKeyMap = (value) => {
@@ -105,15 +111,19 @@ const normalizeSocialMediaStorage = (value) => {
 };
 
 const getPublic = async () => {
-  const [general, socialMedia, contact] = await Promise.all([
+  const [general, socialMedia, contact, header, footer] = await Promise.all([
     db.siteSetting.findOne({ where: { settingType: "general" } }),
     db.siteSetting.findOne({ where: { settingType: "social_media" } }),
     db.siteSetting.findOne({ where: { settingType: "contact" } }),
+    db.siteSetting.findOne({ where: { settingType: "header" } }),
+    db.siteSetting.findOne({ where: { settingType: "footer" } }),
   ]);
 
   const generalData = normalizeSettingData(general?.data);
   const socialMediaData = normalizeSocialMediaData(socialMedia?.data);
   const contactData = normalizeSettingData(contact?.data);
+  const headerData = normalizeSettingData(header?.data);
+  const footerData = normalizeSettingData(footer?.data);
   const contactActive = contactData.status !== false;
   const whiteLogo = generalData.whiteLogo;
   const darkLogo = generalData.darkLogo;
@@ -156,6 +166,8 @@ const getPublic = async () => {
     whatsappNumber,
     whatsappUrl: socialMediaData.whatsappUrl || contactWhatsappUrl,
     mapLink: contactActive ? contactData.mapLink || null : null,
+    header: headerData,
+    footer: footerData,
   };
 };
 

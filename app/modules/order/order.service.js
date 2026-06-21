@@ -6,6 +6,7 @@ const { ORDER_STATUS_VALUES, ORDER_SEARCHABLE_FIELDS } = require("./order.consta
 const SiteSettingService = require("../siteSetting/siteSetting.service");
 const OrderStatusService = require("../orderStatus/orderStatus.service");
 const CouponCodeService = require("../couponCode/couponCode.service");
+const NotificationService = require("../notification/notification.service");
 
 const Order = db.order;
 const IpBlock = db.ipBlock;
@@ -203,6 +204,17 @@ const createOrderInDB = async (payload) => {
   const orderId = await generateOrderId();
   const checkedPayload = await applyOrderCoupon({ ...payload, ipAddress });
   const order = await Order.create({ ...normalizeCreatePayload(checkedPayload), orderId });
+  await NotificationService.createForRoles(
+    ["superAdmin", "admin", "cs"],
+    {
+      title: "New order received",
+      message: `${order.orderId} — ${order.customerName || "Customer"} — ৳${Number(order.totalBill || 0).toFixed(2)}`,
+      type: "order_created",
+      priority: "high",
+      url: "/#page=orders&orderStatus=pending",
+      data: { orderId: order.Id, invoiceId: order.orderId },
+    },
+  ).catch((error) => console.error("Order notification failed:", error.message));
   return toPublicOrder(order);
 };
 
@@ -316,11 +328,23 @@ const deleteOrderFromDB = async (id) => {
   return { message: "Order deleted successfully" };
 };
 
-const updateOrderStatusInDB = async (id, status) => {
+const updateOrderStatusInDB = async (id, status, actorUserId) => {
   const nextStatus = await validateOrderStatus(status);
   const order = await Order.findByPk(id);
   if (!order) throw new ApiError(404, "Order not found");
   await order.update({ status: nextStatus });
+  await NotificationService.createForRoles(
+    ["superAdmin", "admin", "cs", "logistics"],
+    {
+      title: "Order status updated",
+      message: `${order.orderId || `Order #${order.Id}`} is now ${nextStatus}`,
+      type: "order_status",
+      priority: ["cancelled", "returned", "incomplete"].includes(nextStatus) ? "high" : "normal",
+      url: `/#page=orders&orderStatus=${encodeURIComponent(nextStatus)}`,
+      data: { orderId: order.Id, invoiceId: order.orderId, status: nextStatus },
+      excludeUserId: actorUserId,
+    },
+  ).catch((error) => console.error("Order status notification failed:", error.message));
   return order;
 };
 

@@ -199,7 +199,7 @@ const deleteUserFromDB = async (id) => {
   return result;
 };
 
-const updateUserFromDB = async (id, payload) => {
+const updateUserFromDB = async (id, payload, actor = null) => {
   const existing = await User.findOne({
     where: { Id: id },
   });
@@ -209,6 +209,16 @@ const updateUserFromDB = async (id, payload) => {
   }
   if (payload.role) {
     await RolePermissionService.ensureRoleExists(payload.role);
+  }
+  if (payload.status) {
+    const normalizedStatus = String(payload.status).trim().toLowerCase();
+    if (!['active', 'inactive'].includes(normalizedStatus)) {
+      throw new ApiError(400, 'Invalid status value');
+    }
+    payload.status = normalizedStatus === 'active' ? 'Active' : 'Inactive';
+    if (actor?.Id === Number(id) && payload.status === 'Inactive') {
+      throw new ApiError(400, 'You cannot deactivate your own account');
+    }
   }
 
   await User.update(payload, {

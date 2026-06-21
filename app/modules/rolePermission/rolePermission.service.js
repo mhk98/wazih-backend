@@ -238,9 +238,17 @@ const getEffectiveMenuPermissions = async (role) => {
     return validateMenuPermissions(getDefaultPermissionsForRole(normalizedRole));
   }
 
-  return validateMenuPermissions(
+  const effectivePermissions = validateMenuPermissions(
     includeNewSettingsChildren(normalizedRole, record.menuPermissions || []),
   );
+
+  // Super admin always receives every dashboard capability, including newly
+  // introduced menu permissions that may not exist in an older DB record.
+  if (normalizeRoleKey(normalizedRole) === normalizeRoleKey(ENUM_USER_ROLE.SUPER_ADMIN)) {
+    return uniq([...effectivePermissions, ...WAZIH_DASHBOARD_MENU_PERMISSIONS]);
+  }
+
+  return effectivePermissions;
 };
 
 const getAllRolePermissions = async () => {

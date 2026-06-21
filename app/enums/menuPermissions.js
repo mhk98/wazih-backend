@@ -96,6 +96,8 @@ const WAZIH_DASHBOARD_MENU_PERMISSIONS = [
   "supplier",
   "purchase",
   "landing_page",
+  "landing_page_header",
+  "landing_page_footer",
   "admin_user",
   "admin_roles",
   "admin_permissions",

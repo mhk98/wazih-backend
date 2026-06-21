@@ -6,6 +6,159 @@ const ApiError = require("../../../error/ApiError");
 const LandingPage = () => db.landingPage;
 const Product = () => db.product;
 
+const DEFAULT_HEADER = {
+  helpText: "Need any help? Call",
+  supportPhone: "+8809647-222999",
+  supportText: "Contact support",
+  supportUrl: "",
+  trackOrderText: "🚚 Track your order",
+  followUsText: "Follow us:",
+  socialLinks: [
+    { platform: "facebook", label: "Facebook", url: "" },
+    { platform: "youtube", label: "YouTube", url: "" },
+    { platform: "tiktok", label: "TikTok", url: "" },
+    { platform: "instagram", label: "Instagram", url: "" },
+  ],
+  logoUrl: null,
+  logoAlt: "Website logo",
+  backgroundColor: "#1d1d1b",
+  textColor: "#ffffff",
+  accentColor: "#fbbf24",
+  status: true,
+};
+
+const DEFAULT_FOOTER = {
+  logoUrl: null,
+  companyName: "কাফেলা",
+  supportLabel: "Customer Supports:",
+  supportPhone: "+8809647-222999",
+  description: "Corporate and promotional gift item supplier in Bangladesh",
+  address: "500/3 Khilgaon Niribili Society, Dhaka Bangladesh",
+  quickLinksTitle: "Quick Links",
+  quickLinks: [
+    { label: "Customer Support", url: "/contact-us" },
+    { label: "All Products", url: "/products" },
+    { label: "Categories", url: "/categories" },
+    { label: "Track My Order", url: "/track-order" },
+  ],
+  socialLinksTitle: "Follow Us",
+  socialLinks: [
+    { platform: "facebook", label: "facebook", url: "" },
+    { platform: "youtube", label: "youtube", url: "" },
+    { platform: "tiktok", label: "tiktok", url: "" },
+    { platform: "instagram", label: "instagram", url: "" },
+  ],
+  importantLinksTitle: "Important Links",
+  importantLinks: [{ label: "Refund Policy", url: "/refund-policy" }],
+  paymentMethodsImageUrl: null,
+  copyrightText: "কাফেলা © 2026.",
+  developerText: "Develop by SOFT-HEXIS",
+  developerUrl: "",
+  status: true,
+};
+
+const parseObject = (value) => {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      return parseObject(JSON.parse(value));
+    } catch {
+      return {};
+    }
+  }
+  return !Array.isArray(value) && typeof value === "object" ? value : {};
+};
+
+const normalizeLinks = (links, includePlatform = false) => {
+  if (!Array.isArray(links)) return [];
+  return links
+    .filter((link) => link && typeof link === "object")
+    .map((link) => ({
+      ...(includePlatform
+        ? { platform: String(link.platform || link.key || "").trim() }
+        : {}),
+      label: String(link.label || link.name || "").trim(),
+      url: String(link.url || link.link || "").trim(),
+    }))
+    .filter((link) => link.label || link.url);
+};
+
+const normalizeHeader = (payload = {}) => {
+  const data = { ...DEFAULT_HEADER, ...parseObject(payload?.data ?? payload) };
+  return {
+    helpText: String(data.helpText || "").trim(),
+    supportPhone: String(data.supportPhone || "").trim(),
+    supportText: String(data.supportText || "").trim(),
+    supportUrl: String(data.supportUrl || "").trim(),
+    trackOrderText: String(data.trackOrderText || "").trim(),
+    followUsText: String(data.followUsText || "").trim(),
+    socialLinks: normalizeLinks(data.socialLinks, true),
+    logoUrl: data.logoUrl || null,
+    logoAlt: String(data.logoAlt || "").trim(),
+    backgroundColor: String(data.backgroundColor || "#1d1d1b").trim(),
+    textColor: String(data.textColor || "#ffffff").trim(),
+    accentColor: String(data.accentColor || "#fbbf24").trim(),
+    status: data.status !== false,
+  };
+};
+
+const getHeaderFromDB = async () => {
+  const row = await db.siteSetting.findOne({ where: { settingType: "header" } });
+  return { ...DEFAULT_HEADER, ...parseObject(row?.data) };
+};
+
+const upsertHeaderIntoDB = async (payload) => {
+  const current = await getHeaderFromDB();
+  const incoming = parseObject(payload?.data ?? payload);
+  const data = normalizeHeader({ ...current, ...incoming });
+  const [row, created] = await db.siteSetting.findOrCreate({
+    where: { settingType: "header" },
+    defaults: { settingType: "header", data },
+  });
+  if (!created) await row.update({ data });
+  return data;
+};
+
+const normalizeFooter = (payload = {}) => {
+  const data = { ...DEFAULT_FOOTER, ...parseObject(payload?.data ?? payload) };
+  return {
+    logoUrl: data.logoUrl || null,
+    companyName: String(data.companyName || "").trim(),
+    supportLabel: String(data.supportLabel || "").trim(),
+    supportPhone: String(data.supportPhone || "").trim(),
+    description: String(data.description || "").trim(),
+    address: String(data.address || "").trim(),
+    quickLinksTitle: String(data.quickLinksTitle || "").trim(),
+    quickLinks: normalizeLinks(data.quickLinks),
+    socialLinksTitle: String(data.socialLinksTitle || "").trim(),
+    socialLinks: normalizeLinks(data.socialLinks, true),
+    importantLinksTitle: String(data.importantLinksTitle || "").trim(),
+    importantLinks: normalizeLinks(data.importantLinks),
+    paymentMethodsImageUrl: data.paymentMethodsImageUrl || null,
+    copyrightText: String(data.copyrightText || "").trim(),
+    developerText: String(data.developerText || "").trim(),
+    developerUrl: String(data.developerUrl || "").trim(),
+    status: data.status !== false,
+  };
+};
+
+const getFooterFromDB = async () => {
+  const row = await db.siteSetting.findOne({ where: { settingType: "footer" } });
+  return { ...DEFAULT_FOOTER, ...parseObject(row?.data) };
+};
+
+const upsertFooterIntoDB = async (payload) => {
+  const current = await getFooterFromDB();
+  const incoming = parseObject(payload?.data ?? payload);
+  const data = normalizeFooter({ ...current, ...incoming });
+  const [row, created] = await db.siteSetting.findOrCreate({
+    where: { settingType: "footer" },
+    defaults: { settingType: "footer", data },
+  });
+  if (!created) await row.update({ data });
+  return data;
+};
+
 const normalizePayload = async (payload = {}) => {
   const productId = payload.productId ? Number(payload.productId) : null;
   let product = payload.product || null;
@@ -85,4 +238,14 @@ const deleteIdFromDB = async (id) => {
   return { deleted: true };
 };
 
-module.exports = { insertIntoDB, getAllFromDB, getOneFromDB, updateOneFromDB, deleteIdFromDB };
+module.exports = {
+  insertIntoDB,
+  getAllFromDB,
+  getOneFromDB,
+  updateOneFromDB,
+  deleteIdFromDB,
+  getHeaderFromDB,
+  upsertHeaderIntoDB,
+  getFooterFromDB,
+  upsertFooterIntoDB,
+};

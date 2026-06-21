@@ -31,4 +31,34 @@ const deleteIdFromDB = catchAsync(async (req, res) => {
   sendResponse(res, { statusCode: 200, success: true, message: "Landing page deleted", data: result });
 });
 
-module.exports = { insertIntoDB, getAllFromDB, getOneFromDB, updateOneFromDB, deleteIdFromDB };
+const getHeaderFromDB = catchAsync(async (req, res) => {
+  const result = await Service.getHeaderFromDB();
+  sendResponse(res, { statusCode: 200, success: true, message: "Landing page header fetched", data: result });
+});
+
+const upsertHeaderIntoDB = catchAsync(async (req, res) => {
+  const result = await Service.upsertHeaderIntoDB(req.body);
+  sendResponse(res, { statusCode: 200, success: true, message: "Landing page header saved", data: result });
+});
+
+const getFooterFromDB = catchAsync(async (req, res) => {
+  const result = await Service.getFooterFromDB();
+  sendResponse(res, { statusCode: 200, success: true, message: "Landing page footer fetched", data: result });
+});
+
+const upsertFooterIntoDB = catchAsync(async (req, res) => {
+  const result = await Service.upsertFooterIntoDB(req.body);
+  sendResponse(res, { statusCode: 200, success: true, message: "Landing page footer saved", data: result });
+});
+
+module.exports = {
+  insertIntoDB,
+  getAllFromDB,
+  getOneFromDB,
+  updateOneFromDB,
+  deleteIdFromDB,
+  getHeaderFromDB,
+  upsertHeaderIntoDB,
+  getFooterFromDB,
+  upsertFooterIntoDB,
+};

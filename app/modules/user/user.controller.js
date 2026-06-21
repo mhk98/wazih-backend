@@ -147,6 +147,7 @@ const updateUserFromDB = catchAsync(async (req, res) => {
     PostalCode,
     Country,
     role,
+    status,
   } = req.body;
 
   let newPassword;
@@ -167,6 +168,8 @@ const updateUserFromDB = catchAsync(async (req, res) => {
     Country,
     // Only admins can change a user's role — prevent privilege escalation
     ...(isAdmin && role ? { role } : {}),
+    // Status changes are restricted to super admin, matching the status endpoint.
+    ...(callerRole === ENUM_USER_ROLE.SUPER_ADMIN && status ? { status } : {}),
     image: getUploadedDocumentPath(req.files, "image"),
     idCard: getUploadedDocumentPath(req.files, "idCard"),
     cv: getUploadedDocumentPath(req.files, "cv"),
@@ -174,7 +177,7 @@ const updateUserFromDB = catchAsync(async (req, res) => {
     guardianIdCard: getUploadedDocumentPath(req.files, "guardianIdCard"),
   };
 
-  const result = await UserService.updateUserFromDB(id, data);
+  const result = await UserService.updateUserFromDB(id, data, req.user);
   sendResponse(res, {
     statusCode: 200,
     success: true,

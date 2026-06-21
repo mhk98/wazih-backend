@@ -4,7 +4,30 @@ const db = require("../../../models");
 const ApiError = require("../../../error/ApiError");
 const M = () => db.tiktokPixel;
 
-const insertIntoDB = async (data) => M().create(data);
+const normalizePayload = (data = {}) => {
+  const pixelCode = String(data.pixelCode || "").trim();
+  const accessToken = String(data.accessToken || "").trim();
+  if (!/^[A-Za-z0-9_-]{6,128}$/.test(pixelCode)) throw new ApiError(400, "A valid TikTok Pixel Code is required");
+  if (!accessToken) throw new ApiError(400, "TikTok access token is required");
+  return {
+    pixelCode,
+    accessToken,
+    testEventCode: String(data.testEventCode || "").trim() || null,
+    status: data.status === false || data.status === "Inactive" ? "Inactive" : "Active",
+  };
+};
+
+const ensureUnique = async (pixelCode, excludeId) => {
+  const where = { pixelCode };
+  if (excludeId) where.Id = { [Op.ne]: excludeId };
+  if (await M().findOne({ where })) throw new ApiError(409, "This TikTok Pixel Code already exists");
+};
+
+const insertIntoDB = async (data) => {
+  const payload = normalizePayload(data);
+  await ensureUnique(payload.pixelCode);
+  return M().create(payload);
+};
 
 const getAllFromDB = async (filters, options) => {
   const { page, limit, skip } = paginationHelpers.calculatePagination(options);
@@ -31,7 +54,9 @@ const getPublicFromDB = async () => {
 const updateOneFromDB = async (id, payload) => {
   const row = await M().findOne({ where: { Id: id } });
   if (!row) throw new ApiError(404, "TikTok pixel not found");
-  await row.update(payload);
+  const data = normalizePayload({ ...row.get({ plain: true }), ...payload });
+  await ensureUnique(data.pixelCode, row.Id);
+  await row.update(data);
   return row;
 };
 

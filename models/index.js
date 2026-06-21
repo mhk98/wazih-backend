@@ -17,6 +17,10 @@ db.userLogHistory =
     db.sequelize,
     DataTypes,
   );
+db.notification = require("../app/modules/notification/notification.model")(
+  db.sequelize,
+  DataTypes,
+);
 
 // Products
 db.product = require("../app/modules/product/product.model")(
@@ -67,6 +71,16 @@ db.purchaseRequisition =
     db.sequelize,
     DataTypes,
   );
+
+// Expenses
+db.expenseCategory = require("../app/modules/expense/expenseCategory.model")(
+  db.sequelize,
+  DataTypes,
+);
+db.expense = require("../app/modules/expense/expense.model")(
+  db.sequelize,
+  DataTypes,
+);
 
 // Orders
 db.order = require("../app/modules/order/order.model")(db.sequelize, DataTypes);
@@ -151,6 +165,12 @@ db.landingPage = require("../app/modules/landingPage/landingPage.model")(
 // =====================
 // Associations
 // =====================
+
+db.user.hasMany(db.notification, { foreignKey: "userId", as: "notifications" });
+db.notification.belongsTo(db.user, { foreignKey: "userId", as: "user" });
+
+db.expenseCategory.hasMany(db.expense, { foreignKey: "categoryId", as: "expenses" });
+db.expense.belongsTo(db.expenseCategory, { foreignKey: "categoryId", as: "category" });
 
 // Product <-> Variation
 db.product.hasMany(db.variation, { foreignKey: "productId", as: "variations" });

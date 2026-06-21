@@ -344,8 +344,10 @@ const insertIntoDB = async (data = {}) => {
           Notification.create(
             {
               userId: u.Id,
+              title: "Purchase requisition updated",
               message,
-              url: `/${process.env.APP_BASE_URL}/purchase-requisition`,
+              type: "purchase_requisition",
+              url: "/#page=purchase&purchasePage=purchase_list",
             },
             { transaction: t },
           ),
@@ -469,8 +471,10 @@ const insertBulkIntoDB = async (data = {}, preparedItems = null) => {
           Notification.create(
             {
               userId: u.Id,
+              title: "Purchase requisition updated",
               message,
-              url: `/${process.env.APP_BASE_URL}/purchase-requisition`,
+              type: "purchase_requisition",
+              url: "/#page=purchase&purchasePage=purchase_list",
             },
             { transaction: t },
           ),
@@ -770,8 +774,10 @@ const updateBulkOneFromDB = async (id, payload, preparedItems = []) => {
         Notification.create(
           {
             userId: u.Id,
+            title: "Purchase requisition updated",
             message,
-            url: `/${process.env.APP_BASE_URL}/purchase-product`,
+            type: "purchase_requisition",
+            url: "/#page=purchase&purchasePage=purchase_list",
           },
           { transaction: t },
         ),
@@ -998,8 +1004,10 @@ const updateOneFromDB = async (id, payload) => {
       users.map((u) =>
         Notification.create({
           userId: u.Id,
+          title: "Purchase requisition updated",
           message,
-          url: `/${process.env.APP_BASE_URL}/purchase-product`,
+          type: "purchase_requisition",
+          url: "/#page=purchase&purchasePage=purchase_list",
         }),
       ),
     );
