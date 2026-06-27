@@ -1,5 +1,4 @@
 const bcrypt = require("bcryptjs");
-const { Op } = require("sequelize");
 const ApiError = require("../../../error/ApiError");
 const { generateToken } = require("../../../helpers/jwtHelpers");
 const db = require("../../../models");
@@ -8,7 +7,6 @@ const OrderService = require("../order/order.service");
 const User = db.user;
 
 const normalizePhone = (phone) => String(phone || "").replace(/\D/g, "").trim();
-const phoneToEmail = (phone) => `${normalizePhone(phone)}@customer.wazih.local`;
 
 const toCustomer = (user) => ({
   Id: user.Id,
@@ -26,12 +24,7 @@ const register = async ({ name, phone, password }) => {
   }
 
   const existing = await User.findOne({
-    where: {
-      [Op.or]: [
-        { Phone: normalizedPhone },
-        { Email: phoneToEmail(normalizedPhone) },
-      ],
-    },
+    where: { Phone: normalizedPhone },
   });
   if (existing) throw new ApiError(409, "Customer already exists");
 
@@ -42,7 +35,7 @@ const register = async ({ name, phone, password }) => {
   const user = await User.create({
     FirstName: firstName,
     LastName: lastName || null,
-    Email: phoneToEmail(normalizedPhone),
+    Email: null,
     Phone: normalizedPhone,
     Password: password,
     role: "user",
@@ -59,12 +52,7 @@ const login = async ({ phone, password }) => {
   }
 
   const user = await User.findOne({
-    where: {
-      [Op.or]: [
-        { Phone: normalizedPhone },
-        { Email: phoneToEmail(normalizedPhone) },
-      ],
-    },
+    where: { Phone: normalizedPhone },
   });
   if (!user) throw new ApiError(401, "Invalid phone or password");
   if (user.status === "Inactive") throw new ApiError(403, "This account is deactivated");

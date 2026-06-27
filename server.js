@@ -39,10 +39,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:5173",
-  "https://kafelamart.digitalever.com.bd",
-  "https://www.kafelamart.digitalever.com.bd",
-  "https://shifa.digitalever.com.bd",
-  "https://www.shifa.digitalever.com.bd",
+  " https://homzify.net",
+  "https://admin.homzify.net",
 ];
 
 const ALLOWED_ORIGINS = new Set(
@@ -58,7 +56,8 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     const normalizedOrigin = origin.replace(/\/+$/, "");
-    if (ALLOWED_ORIGINS.has(normalizedOrigin)) return callback(null, normalizedOrigin);
+    if (ALLOWED_ORIGINS.has(normalizedOrigin))
+      return callback(null, normalizedOrigin);
 
     return callback(null, false);
   },
@@ -125,9 +124,9 @@ const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Wazih Backend API",
+      title: "Holy Deen Backend API",
       version: "1.0.0",
-      description: "API documentation for Wazih Backend",
+      description: "API documentation for Holy Deen Backend",
     },
     servers: [{ url: "/api/v1" }],
     components: {
@@ -193,6 +192,39 @@ app.use((err, req, res, next) => {
     return res.status(err.statusCode).json({
       status: "error",
       message: err.message,
+      ...(isDev && { stack: err.stack }),
+    });
+  }
+
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({
+      status: "error",
+      message:
+        'Invalid JSON body. Wrap phone numbers in quotes, e.g. "Phone": "01518301098".',
+      ...(isDev && { stack: err.stack }),
+    });
+  }
+
+  if (err.name === "MulterError") {
+    return res.status(400).json({
+      status: "error",
+      message: err.message || "File upload failed",
+      ...(isDev && { stack: err.stack }),
+    });
+  }
+
+  if (err.message?.startsWith("Invalid file format")) {
+    return res.status(400).json({
+      status: "error",
+      message: err.message,
+      ...(isDev && { stack: err.stack }),
+    });
+  }
+
+  if (err.code === "ENOENT") {
+    return res.status(500).json({
+      status: "error",
+      message: "Upload folder is missing or not writable.",
       ...(isDev && { stack: err.stack }),
     });
   }

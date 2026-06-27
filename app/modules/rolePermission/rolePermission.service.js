@@ -5,14 +5,14 @@ const {
 } = require("../../config/roleMenuPermissions");
 const {
   ALL_VALID_MENU_PERMISSIONS,
-  WAZIH_DASHBOARD_MENU_PERMISSIONS,
+  HOLYDEEN_DASHBOARD_MENU_PERMISSIONS,
 } = require("../../enums/menuPermissions");
 const { ENUM_USER_ROLE } = require("../../enums/user");
 
 const RolePermission = db.rolePermission;
 
 const validMenuPermissionSet = new Set(ALL_VALID_MENU_PERMISSIONS);
-const manageableMenuPermissionSet = new Set(WAZIH_DASHBOARD_MENU_PERMISSIONS);
+const manageableMenuPermissionSet = new Set(HOLYDEEN_DASHBOARD_MENU_PERMISSIONS);
 const protectedRoleKeys = new Set(
   [ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.USER].map((role) =>
     role.toLowerCase(),
@@ -47,7 +47,7 @@ const LEGACY_PERMISSION_ALIASES = {
   designation_management: "department_designation",
 };
 
-const LEGACY_TO_WAZIH_PERMISSION_ALIASES = {
+const LEGACY_TO_HOLYDEEN_PERMISSION_ALIASES = {
   overview: ["dashboard"],
   sale: ["orders"],
   product: ["products"],
@@ -90,12 +90,12 @@ const toManageableMenuPermissions = (permissions = []) => {
       manageable.add(normalizedPermission);
     }
 
-    (LEGACY_TO_WAZIH_PERMISSION_ALIASES[normalizedPermission] || []).forEach(
+    (LEGACY_TO_HOLYDEEN_PERMISSION_ALIASES[normalizedPermission] || []).forEach(
       (mappedPermission) => manageable.add(mappedPermission),
     );
   });
 
-  return WAZIH_DASHBOARD_MENU_PERMISSIONS.filter((permission) =>
+  return HOLYDEEN_DASHBOARD_MENU_PERMISSIONS.filter((permission) =>
     manageable.has(permission),
   );
 };
@@ -245,7 +245,7 @@ const getEffectiveMenuPermissions = async (role) => {
   // Super admin always receives every dashboard capability, including newly
   // introduced menu permissions that may not exist in an older DB record.
   if (normalizeRoleKey(normalizedRole) === normalizeRoleKey(ENUM_USER_ROLE.SUPER_ADMIN)) {
-    return uniq([...effectivePermissions, ...WAZIH_DASHBOARD_MENU_PERMISSIONS]);
+    return uniq([...effectivePermissions, ...HOLYDEEN_DASHBOARD_MENU_PERMISSIONS]);
   }
 
   return effectivePermissions;
@@ -272,7 +272,7 @@ const getAllRolePermissions = async () => {
   }));
 };
 
-const getAvailableMenuPermissions = () => WAZIH_DASHBOARD_MENU_PERMISSIONS;
+const getAvailableMenuPermissions = () => HOLYDEEN_DASHBOARD_MENU_PERMISSIONS;
 
 const getRolePermissionByRole = async (role) => {
   const normalizedRole = validateRoleName(role);
@@ -354,7 +354,7 @@ const deleteRolePermissions = async (role) => {
 
 const hasMenuPermission = (userPermissions = [], requiredPermission) => {
   const alias = LEGACY_PERMISSION_ALIASES[requiredPermission];
-  const wazihAliases = {
+  const holydeenAliases = {
     user_management: ["admin_user", "admin_roles", "admin_permissions"],
     cod_change: ["website_setting"],
     cod_charge: ["website_setting"],
@@ -365,7 +365,7 @@ const hasMenuPermission = (userPermissions = [], requiredPermission) => {
   return (
     userPermissions.includes(requiredPermission) ||
     (alias ? userPermissions.includes(alias) : false) ||
-    (wazihAliases[requiredPermission] || []).some((permission) =>
+    (holydeenAliases[requiredPermission] || []).some((permission) =>
       userPermissions.includes(permission),
     ) ||
     // Also allow legacy keys to satisfy the canonical permission check.

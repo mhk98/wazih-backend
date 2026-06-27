@@ -27,7 +27,7 @@ const markAsRead = async (userId, id) => {
   if (!row.isRead) await row.update({ isRead: true, readAt: new Date() });
   const unreadCount = await getUnreadCount(userId);
   emitToUser(userId, "notification:read", { id: row.Id, unreadCount });
-  return row;
+  return { notification: row, unreadCount };
 };
 
 const markAllAsRead = async (userId) => {
@@ -36,7 +36,7 @@ const markAllAsRead = async (userId) => {
     { where: { userId, isRead: false } },
   );
   emitToUser(userId, "notification:read-all", { unreadCount: 0 });
-  return { updated };
+  return { updated, unreadCount: 0 };
 };
 
 const removeMine = async (userId, id) => {
@@ -45,7 +45,7 @@ const removeMine = async (userId, id) => {
   await row.destroy();
   const unreadCount = await getUnreadCount(userId);
   emitToUser(userId, "notification:deleted", { id: row.Id, unreadCount });
-  return { deleted: true };
+  return { deleted: true, unreadCount };
 };
 
 const createForUsers = async (userIds = [], payload = {}, options = {}) => {

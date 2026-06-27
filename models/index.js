@@ -169,8 +169,14 @@ db.landingPage = require("../app/modules/landingPage/landingPage.model")(
 db.user.hasMany(db.notification, { foreignKey: "userId", as: "notifications" });
 db.notification.belongsTo(db.user, { foreignKey: "userId", as: "user" });
 
-db.expenseCategory.hasMany(db.expense, { foreignKey: "categoryId", as: "expenses" });
-db.expense.belongsTo(db.expenseCategory, { foreignKey: "categoryId", as: "category" });
+db.expenseCategory.hasMany(db.expense, {
+  foreignKey: "categoryId",
+  as: "expenses",
+});
+db.expense.belongsTo(db.expenseCategory, {
+  foreignKey: "categoryId",
+  as: "category",
+});
 
 // Product <-> Variation
 db.product.hasMany(db.variation, { foreignKey: "productId", as: "variations" });
@@ -576,7 +582,7 @@ const seedDefaultLandingPages = async () => {
       descriptionTitle: "আতর পারফিউম কম্বো কেন নিবেন",
       description:
         "এক প্যাকের মধ্যে বিভিন্ন ঘ্রাণের আতর ও পারফিউম থাকায় নিজের জন্য ব্যবহার করা যায়, আবার প্রিয়জনকে উপহারও দেওয়া যায়। অল্প দামে premium fragrance collection নেওয়ার জন্য এই offer তৈরি করা হয়েছে।",
-      whyChooseTitle: "Wazih থেকে কেন কিনবেন",
+      whyChooseTitle: "Holy Deen থেকে কেন কিনবেন",
       whyChooseUs:
         "আমরা authentic product, দ্রুত delivery, সহজ return support এবং trusted customer service দিয়ে থাকি। অর্ডার করার পর customer support team আপনার সাথে confirm করবে।",
       price: 699,
@@ -707,25 +713,38 @@ const seedDefaultWebsitePages = async () => {
   );
 };
 
-const seedDefaultBannerCategories = async () => {
-  if (!db.bannerCategory) return;
+const seedDefaultSiteSettings = async () => {
+  if (!db.siteSetting) return;
 
-  const categories = [
-    { name: "Nazmul Hasan", sortOrder: 1 },
-    { name: "Welcome to Sellpixer", sortOrder: 2 },
-    { name: "Popup Banner", sortOrder: 3 },
-    { name: "Slider Right (375px X 175px)", sortOrder: 4 },
-    { name: "Main Slider (775px x 400px)", sortOrder: 5 },
+  const settings = [
+    {
+      settingType: "contact",
+      data: {
+        hotlineNumber: "01769950986",
+        hotMail: "info@holydeen.com",
+        phoneNumber: "01769950986",
+        email: "info@holydeen.com",
+        address: "Dinajpur City College, Nimnager, Balubari, Dinajpur",
+        whatsappNumber: "01769950986",
+        mapLink: "",
+        status: true,
+      },
+    },
+    {
+      settingType: "footer",
+      data: {
+        copyrightText:
+          "Copyright © 2026 Holy Deen. All rights reserved. Developed By DeenSoft",
+      },
+    },
   ];
 
-  await Promise.all(
-    categories.map((category) =>
-      db.bannerCategory.findOrCreate({
-        where: { name: category.name },
-        defaults: { ...category, status: "Active" },
-      }),
-    ),
-  );
+  for (const setting of settings) {
+    await db.siteSetting.findOrCreate({
+      where: { settingType: setting.settingType },
+      defaults: setting,
+    });
+  }
 };
 
 // =====================
@@ -748,7 +767,7 @@ db.sequelize
     await ensureLandingPageContentColumns();
     await seedDefaultLandingPages();
     await seedDefaultWebsitePages();
-    await seedDefaultBannerCategories();
+    await seedDefaultSiteSettings();
 
     // Initialize default role permissions
     const {

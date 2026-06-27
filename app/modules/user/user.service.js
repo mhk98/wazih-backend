@@ -20,6 +20,12 @@ const generateRandomPassword = () => {
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 };
 
+const normalizePhone = (phone) => {
+  const digits = String(phone || "").replace(/\D/g, "").trim();
+  if (/^1\d{9}$/.test(digits)) return `0${digits}`;
+  return digits;
+};
+
 const sanitizeUser = (user) => {
   if (!user) return null;
 
@@ -86,13 +92,20 @@ const login = async (buyerData) => {
 
 const register = async (userData) => {
   const { Email, Password, Name } = userData;
+  const Phone = normalizePhone(userData.Phone);
+  if (!Phone) {
+    throw new ApiError(400, "Phone is required");
+  }
+
   const plainPassword =
     typeof Password === "string" && Password.trim()
       ? Password
       : generateRandomPassword();
 
-  const isUserExist = await User.findOne({ where: { Email } });
-  if (isUserExist) throw new ApiError(409, "User already exist");
+  if (Email) {
+    const isUserExist = await User.findOne({ where: { Email } });
+    if (isUserExist) throw new ApiError(409, "User already exist");
+  }
   if (userData.role) {
     await RolePermissionService.ensureRoleExists(userData.role);
   }
@@ -100,27 +113,30 @@ const register = async (userData) => {
   // ✅ user create
   const result = await User.create({
     ...userData,
+    Phone,
     Password: plainPassword,
   });
 
-  // ✅ send email after success
-  const htmlContent = welcomeCredentialsTemplate({
-    name: Name || "User",
-    email: Email,
-    password: plainPassword,
-    loginUrl: process.env.APP_LOGIN_URL,
-    brandName: process.env.MAIL_BRAND_NAME,
-  });
+  if (Email) {
+    // ✅ send email after success
+    const htmlContent = welcomeCredentialsTemplate({
+      name: Name || "User",
+      email: Email,
+      password: plainPassword,
+      loginUrl: process.env.APP_LOGIN_URL,
+      brandName: process.env.MAIL_BRAND_NAME,
+    });
 
-  const sent = await sendEmail({
-    to: Email,
-    subject: "Your Accounts Software Credentials",
-    htmlContent,
-  });
+    const sent = await sendEmail({
+      to: Email,
+      subject: "Your Accounts Software Credentials",
+      htmlContent,
+    });
 
-  // optional: email fail হলে log/handle
-  if (!sent) {
-    console.log("⚠️ User created but email not sent:", Email);
+    // optional: email fail হলে log/handle
+    if (!sent) {
+      console.log("⚠️ User created but email not sent:", Email);
+    }
   }
 
   return result;

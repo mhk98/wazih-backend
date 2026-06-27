@@ -1,6 +1,10 @@
 const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
+
+const UPLOAD_DIR = "images";
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Allowed MIME types — zip removed (security risk)
 const ALLOWED_MIME_TYPES = new Set([
@@ -23,12 +27,12 @@ const ALLOWED_EXTENSIONS = new Set([
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "images");
+    cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
     // UUID filename — prevents path traversal and originalname injection
     const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${uuidv4()}${ext}`);
+    cb(null, `${randomUUID()}${ext}`);
   },
 });
 

@@ -280,7 +280,8 @@ const getOrderStatusCountsFromDB = async () => {
   const result = { all: total };
   activeStatuses.forEach((s) => (result[s.key] = 0));
   counts.forEach(({ status, count }) => {
-    result[status] = Number(count);
+    const key = OrderStatusService.toOrderStatusKey(status);
+    result[key] = (result[key] || 0) + Number(count);
   });
 
   return result;

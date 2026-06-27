@@ -56,6 +56,7 @@ const register = catchAsync(async (req, res) => {
     PostalCode,
     Country,
     role,
+    status,
   } = req.body;
 
   const data = {
@@ -69,6 +70,7 @@ const register = catchAsync(async (req, res) => {
     PostalCode,
     Country,
     role,
+    status,
     image: getUploadedDocumentPath(req.files, "image"),
     idCard: getUploadedDocumentPath(req.files, "idCard"),
     cv: getUploadedDocumentPath(req.files, "cv"),
