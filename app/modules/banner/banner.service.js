@@ -7,8 +7,8 @@ const M = () => db.banner;
 
 const categoryType = (name = "") => {
   const value = String(name).toLowerCase();
-  if (value.includes("main slider")) return "slider";
-  if (value.includes("slider right")) return "side";
+  if (value.includes("main slider") || value === "slider") return "slider";
+  if (value.includes("slider right") || value.includes("side banner") || value === "side") return "side";
   if (value.includes("popup")) return "popup";
   return "custom";
 };
@@ -40,7 +40,7 @@ const normalizePayload = async (payload = {}, file) => {
     file: file?.filename || payload.file || payload.imageName || null,
     alt: payload.alt || payload.imageText || payload.categoryName || payload.category || null,
     status: payload.status === false || payload.status === "Inactive" ? "Inactive" : "Active",
-    sortOrder: payload.sortOrder || payload.sortOrder === 0 ? Number(payload.sortOrder) : null,
+    sortOrder: payload.sortOrder || payload.sortOrder === 0 ? Number(payload.sortOrder) : 0,
   };
 };
 

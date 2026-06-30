@@ -133,10 +133,9 @@ const updateUserFromDB = catchAsync(async (req, res) => {
   const callerRole = req.user?.role;
   const { ENUM_USER_ROLE } = require("../../enums/user");
 
-  const isAdmin = [
-    ENUM_USER_ROLE.SUPER_ADMIN,
-    ENUM_USER_ROLE.ADMIN,
-  ].includes(callerRole);
+  const isAdmin = [ENUM_USER_ROLE.SUPER_ADMIN, ENUM_USER_ROLE.ADMIN].includes(
+    callerRole,
+  );
 
   const {
     FirstName,
@@ -189,7 +188,7 @@ const updateUserFromDB = catchAsync(async (req, res) => {
 });
 
 const deleteUserFromDB = catchAsync(async (req, res) => {
-  const result = await UserService.deleteIdFromDB(req.params.id);
+  const result = await UserService.deleteUserFromDB(req.params.id);
   sendResponse(res, {
     statusCode: 200,
     success: true,

@@ -33,7 +33,7 @@ const getAllFromDB = async (filters, options) => {
     paranoid: true,
     order: options.sortBy && options.sortOrder
       ? [[options.sortBy, options.sortOrder.toUpperCase()]]
-      : [["createdAt", "DESC"]],
+      : [["createdAt", "ASC"], ["Id", "ASC"]],
   });
 
   const count = await Subcategory.count({ where: whereConditions });
@@ -42,7 +42,7 @@ const getAllFromDB = async (filters, options) => {
 };
 
 const getAllFromDBWithoutQuery = async () => {
-  return await Subcategory.findAll({ paranoid: true, order: [["createdAt", "DESC"]] });
+  return await Subcategory.findAll({ paranoid: true, order: [["createdAt", "ASC"], ["Id", "ASC"]] });
 };
 
 const getDataById = async (id) => {

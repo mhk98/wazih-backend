@@ -1,4 +1,4 @@
-const { Op, where } = require("sequelize"); // Ensure Op is imported
+const { Op } = require("sequelize");
 const paginationHelpers = require("../../../helpers/paginationHelper");
 const db = require("../../../models");
 const ApiError = require("../../../error/ApiError");
@@ -12,8 +12,6 @@ const insertIntoDB = async (data) => {
 
 const getAllFromDB = async (filters, options) => {
   const { page, limit, skip } = paginationHelpers.calculatePagination(options);
-
-  console.log(filters);
 
   const { searchTerm, ...filterData } = filters;
 
@@ -37,7 +35,7 @@ const getAllFromDB = async (filters, options) => {
   //   );
   // }
 
-  // Match `title` starting from the search term
+  // Match category name starting from the search term.
   if (searchTerm) {
     andConditions.push({
       name: { [Op.like]: `${searchTerm}%` },
@@ -64,7 +62,10 @@ const getAllFromDB = async (filters, options) => {
     order:
       options.sortBy && options.sortOrder
         ? [[options.sortBy, options.sortOrder.toUpperCase()]]
-        : [["createdAt", "DESC"]],
+        : [
+            ["createdAt", "ASC"],
+            ["Id", "ASC"],
+          ],
   });
 
   const count = await Category.count({ where: whereConditions });
@@ -108,7 +109,10 @@ const updateOneFromDB = async (id, payload) => {
 const getAllFromDBWithoutQuery = async () => {
   const result = await Category.findAll({
     paranoid: true,
-    order: [["sortOrder", "ASC"], ["createdAt", "DESC"]],
+    order: [
+      ["createdAt", "ASC"],
+      ["Id", "ASC"],
+    ],
   });
 
   return result;
@@ -121,29 +125,45 @@ const getPublicMenu = async () => {
         status: { [Op.ne]: "Inactive" },
       },
       paranoid: true,
-      order: [["sortOrder", "ASC"], ["createdAt", "DESC"]],
+      order: [
+        ["createdAt", "ASC"],
+        ["Id", "ASC"],
+      ],
       raw: true,
     }),
     db.subcategory.findAll({
       where: { status: { [Op.ne]: "Inactive" } },
       paranoid: true,
-      order: [["createdAt", "DESC"]],
+      order: [
+        ["createdAt", "ASC"],
+        ["Id", "ASC"],
+      ],
       raw: true,
     }),
     db.childcategory.findAll({
       where: { status: { [Op.ne]: "Inactive" } },
       paranoid: true,
-      order: [["createdAt", "DESC"]],
+      order: [
+        ["createdAt", "ASC"],
+        ["Id", "ASC"],
+      ],
       raw: true,
     }),
   ]);
 
-  const childcategoriesBySubcategory = childcategories.reduce((acc, childcategory) => {
-    const key = String(childcategory.subcategoryId || "");
-    if (!acc[key]) acc[key] = [];
-    acc[key].push({ Id: childcategory.Id, label: childcategory.name, name: childcategory.name });
-    return acc;
-  }, {});
+  const childcategoriesBySubcategory = childcategories.reduce(
+    (acc, childcategory) => {
+      const key = String(childcategory.subcategoryId || "");
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({
+        Id: childcategory.Id,
+        label: childcategory.name,
+        name: childcategory.name,
+      });
+      return acc;
+    },
+    {},
+  );
 
   const subcategoriesByCategory = subcategories.reduce((acc, subcategory) => {
     const key = String(subcategory.categoryId || "");

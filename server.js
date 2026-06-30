@@ -50,13 +50,19 @@ const ALLOWED_ORIGINS = new Set(
     .filter(Boolean),
 );
 
+const isLocalDevOrigin = (origin = "") =>
+  /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin);
+
 const corsOptions = {
   origin: (origin, callback) => {
     // allow requests with no origin (e.g. mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
 
     const normalizedOrigin = origin.replace(/\/+$/, "");
-    if (ALLOWED_ORIGINS.has(normalizedOrigin))
+    if (
+      ALLOWED_ORIGINS.has(normalizedOrigin) ||
+      isLocalDevOrigin(normalizedOrigin)
+    )
       return callback(null, normalizedOrigin);
 
     return callback(null, false);
@@ -161,6 +167,18 @@ app.get("/", (req, res) => {
   });
 });
 
+app.get("/api/v1/health", async (req, res, next) => {
+  try {
+    await db.sequelize.query("SELECT 1");
+    res.status(200).json({
+      status: "success",
+      message: "API and database are reachable",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use("/api/v1", routes);
 
 /* ========================
@@ -243,6 +261,7 @@ const startServer = async () => {
   try {
     // Authenticate DB connection
     await db.sequelize.authenticate();
+    await db.ready;
     console.log("✅ Database connected successfully");
 
     // Sync models (optional in production)

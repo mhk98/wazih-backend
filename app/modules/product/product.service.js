@@ -5,6 +5,7 @@ const ApiError = require("../../../error/ApiError");
 const { ProductSearchableFields } = require("./product.constants");
 const Product = db.product;
 const Variation = db.variation;
+const SupplierHistory = db.supplierHistory;
 const InventoryMaster = db.inventoryMaster;
 
 const productNameSyncModels = [
@@ -34,6 +35,34 @@ const parseItems = (value) => {
 
 const hasAttribute = (Model, attribute) =>
   Boolean(Model?.rawAttributes?.[attribute]);
+
+const optionalId = (value) => {
+  if (value === undefined || value === null || value === "") return null;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+};
+
+const createSupplierPaymentIfNeeded = async ({
+  purchaseEnabled,
+  supplierId,
+  payAmount,
+  purchaseDate,
+  productName,
+  transaction,
+}) => {
+  const enabled = purchaseEnabled === true || purchaseEnabled === "true" || purchaseEnabled === "1" || purchaseEnabled === 1;
+  const resolvedSupplierId = optionalId(supplierId);
+  const amount = Number(payAmount || 0);
+  if (!enabled || !SupplierHistory || !resolvedSupplierId || !amount) return null;
+
+  return SupplierHistory.create({
+    supplierId: resolvedSupplierId,
+    amount,
+    status: "Paid",
+    date: String(purchaseDate || new Date().toISOString()).slice(0, 10),
+    file: productName ? `Product purchase: ${productName}` : null,
+  }, transaction ? { transaction } : undefined);
+};
 
 const buildJoinedName = (items = []) =>
   items
@@ -180,6 +209,7 @@ const insertIntoDB = async (data, files = []) => {
     giftTitle, giftPrice,
     bestDeals, freeShipping, status,
     variations: variationsRaw,
+    purchaseEnabled, supplierId, payAmount, purchaseDate,
   } = data;
 
   // collect uploaded image paths
@@ -224,6 +254,10 @@ const insertIntoDB = async (data, files = []) => {
     await Promise.all(parsedVariations.map(v =>
       Variation.create({
         productId:     product.Id,
+        colorId:       v.colorId ? Number(v.colorId) : null,
+        colorImage:    v.colorImage || null,
+        attribute:     v.attribute || null,
+        availability:  v.availability || "in stock",
         purchasePrice: v.purchasePrice ? Number(v.purchasePrice) : null,
         oldPrice:      v.oldPrice      ? Number(v.oldPrice)      : null,
         newPrice:      v.newPrice      ? Number(v.newPrice)      : null,
@@ -231,6 +265,14 @@ const insertIntoDB = async (data, files = []) => {
       })
     ));
   }
+
+  await createSupplierPaymentIfNeeded({
+    purchaseEnabled,
+    supplierId,
+    payAmount,
+    purchaseDate,
+    productName: product.name,
+  });
 
   return product;
 };
@@ -352,6 +394,7 @@ const updateOneFromDB = async (id, payload, files = []) => {
     bestDeals, freeShipping, status,
     variations: variationsRaw,
     keptImages: keptImagesRaw,
+    purchaseEnabled, supplierId, payAmount, purchaseDate,
   } = payload;
 
   return db.sequelize.transaction(async (transaction) => {
@@ -405,6 +448,10 @@ const updateOneFromDB = async (id, payload, files = []) => {
       await Promise.all(parsedVariations.map(v =>
         Variation.create({
           productId:     id,
+          colorId:       v.colorId ? Number(v.colorId) : null,
+          colorImage:    v.colorImage || null,
+          attribute:     v.attribute || null,
+          availability:  v.availability || "in stock",
           purchasePrice: v.purchasePrice ? Number(v.purchasePrice) : null,
           oldPrice:      v.oldPrice      ? Number(v.oldPrice)      : null,
           newPrice:      v.newPrice      ? Number(v.newPrice)      : null,
@@ -412,6 +459,15 @@ const updateOneFromDB = async (id, payload, files = []) => {
         }, { transaction })
       ));
     }
+
+    await createSupplierPaymentIfNeeded({
+      purchaseEnabled,
+      supplierId,
+      payAmount,
+      purchaseDate,
+      productName: name || existingProduct.name,
+      transaction,
+    });
 
     return { id, updated: true };
   });
@@ -478,11 +534,24 @@ const listValue = (value) => {
   return value ? [value] : [];
 };
 
+const uniqueList = (items) => {
+  const seen = new Set();
+  return items.filter((item) => {
+    if (!item || seen.has(item)) return false;
+    seen.add(item);
+    return true;
+  });
+};
+
 const toStorefrontProduct = (product, maps = {}) => {
   const plain = product.toJSON ? product.toJSON() : product;
   const variations = plain.variations || [];
   const firstVariation = variations[0] || {};
-  const images = parseJsonArray(plain.images);
+  const images = uniqueList([
+    plain.file,
+    ...parseJsonArray(plain.images),
+    ...parseJsonArray(plain.gallery),
+  ].filter(Boolean));
   const oldPrice = Number(firstVariation.oldPrice || firstVariation.purchasePrice || 0);
   const newPrice = Number(firstVariation.newPrice || firstVariation.oldPrice || firstVariation.purchasePrice || 0);
   const discount = oldPrice > 0 && newPrice > 0 && oldPrice > newPrice
@@ -505,15 +574,21 @@ const toStorefrontProduct = (product, maps = {}) => {
     quantity: stock,
     file: images[0] || null,
     gallery: images,
-    features: plain.shortDescription ? [plain.shortDescription] : [],
+    features: plain.shortDescription ? [plain.shortDescription] : parseJsonArray(plain.features),
     variants: variations.map((variation) => ({
+      colorId: variation.colorId || null,
+      colorName: maps.colors?.get(Number(variation.colorId)) || null,
+      attribute: variation.attribute || null,
       size: listValue(variation.size),
-      color: listValue(variation.color),
+      color: variation.colorId && maps.colors?.get(Number(variation.colorId))
+        ? [maps.colors.get(Number(variation.colorId))]
+        : listValue(variation.color),
       weight: variation.weight || null,
       unit: variation.unit || null,
       oldPrice: variation.oldPrice,
       newPrice: variation.newPrice,
       stock: variation.stock,
+      availability: variation.availability || null,
     })),
     sku: plain.sku,
     freeShipping: Boolean(plain.freeShipping),
@@ -530,14 +605,19 @@ const getStorefrontProducts = async () => {
     order: [["createdAt", "DESC"]],
   });
 
-  const [categories, subcategories, childcategories] = await Promise.all([
+  const variationColorIds = products.flatMap((product) =>
+    (product.variations || []).map((variation) => variation.colorId),
+  );
+
+  const [categories, subcategories, childcategories, colors] = await Promise.all([
     getNameMap(db.category, products.map((product) => product.categoryId)),
     getNameMap(db.subcategory, products.map((product) => product.subcategoryId)),
     getNameMap(db.childcategory, products.map((product) => product.childcategoryId)),
+    getNameMap(db.color, variationColorIds),
   ]);
 
   return products.map((product) =>
-    toStorefrontProduct(product, { categories, subcategories, childcategories }),
+    toStorefrontProduct(product, { categories, subcategories, childcategories, colors }),
   );
 };
 
@@ -549,13 +629,15 @@ const getStorefrontProductById = async (id) => {
   });
   if (!product) return null;
 
-  const [categories, subcategories, childcategories] = await Promise.all([
+  const variationColorIds = (product.variations || []).map((variation) => variation.colorId);
+  const [categories, subcategories, childcategories, colors] = await Promise.all([
     getNameMap(db.category, [product.categoryId]),
     getNameMap(db.subcategory, [product.subcategoryId]),
     getNameMap(db.childcategory, [product.childcategoryId]),
+    getNameMap(db.color, variationColorIds),
   ]);
 
-  return toStorefrontProduct(product, { categories, subcategories, childcategories });
+  return toStorefrontProduct(product, { categories, subcategories, childcategories, colors });
 };
 
 const ProductService = {

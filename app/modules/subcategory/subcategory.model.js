@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
       status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: "Active" },
       deletedAt: { type: DataTypes.DATE, allowNull: true },
     },
-    { timestamps: true, paranoid: true }
+    { timestamps: true, paranoid: true, tableName: "SubCategories" }
   );
   return Subcategory;
 };

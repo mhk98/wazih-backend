@@ -23,6 +23,11 @@ const uniq = (items = []) => [...new Set(items)];
 
 const normalizeRole = (role) => String(role || "").trim();
 const normalizeRoleKey = (role) => normalizeRole(role).toLowerCase();
+const builtInRoles = Object.values(ENUM_USER_ROLE);
+const builtInRoleByKey = new Map(
+  builtInRoles.map((role) => [normalizeRoleKey(role), role]),
+);
+const isBuiltInRole = (role) => builtInRoleByKey.has(normalizeRoleKey(role));
 
 const validateRoleName = (role) => {
   const normalizedRole = normalizeRole(role);
@@ -150,10 +155,10 @@ const validateRole = (role) => {
 const ensureRoleExists = async (role) => {
   const normalizedRole = validateRoleName(role);
   const record = await RolePermission.findOne({ where: { role: normalizedRole } });
-  if (!record) {
+  if (!record && !isBuiltInRole(normalizedRole)) {
     throw new ApiError(400, "Invalid role");
   }
-  return record;
+  return record || { role: builtInRoleByKey.get(normalizeRoleKey(normalizedRole)) };
 };
 
 const validateMenuPermissions = (menuPermissions) => {
@@ -256,20 +261,39 @@ const getAllRolePermissions = async () => {
     order: [["createdAt", "ASC"], ["Id", "ASC"]],
   });
 
-  return records.map((record) => ({
-    Id: record.Id,
-    role: record.role,
-    menuPermissions:
-      normalizeRoleKey(record.role) === normalizeRoleKey(ENUM_USER_ROLE.SUPER_ADMIN)
-        ? getAvailableMenuPermissions()
-        : toManageableMenuPermissions(
-            validateMenuPermissions(
-              includeNewSettingsChildren(record.role, record.menuPermissions || []),
-            ),
-          ),
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-  }));
+  const recordsByRole = new Map(
+    records.map((record) => [normalizeRoleKey(record.role), record]),
+  );
+  const roleNames = uniq([
+    ...builtInRoles,
+    ...records.map((record) => record.role),
+  ]);
+
+  return Promise.all(
+    roleNames.map(async (role) => {
+      const record = recordsByRole.get(normalizeRoleKey(role));
+      const resolvedRole = record?.role || role;
+      return {
+        Id: record?.Id,
+        role: resolvedRole,
+        menuPermissions:
+          normalizeRoleKey(resolvedRole) === normalizeRoleKey(ENUM_USER_ROLE.SUPER_ADMIN)
+            ? getAvailableMenuPermissions()
+            : toManageableMenuPermissions(
+                record
+                  ? validateMenuPermissions(
+                      includeNewSettingsChildren(
+                        resolvedRole,
+                        record.menuPermissions || [],
+                      ),
+                    )
+                  : await getEffectiveMenuPermissions(resolvedRole),
+              ),
+        createdAt: record?.createdAt,
+        updatedAt: record?.updatedAt,
+      };
+    }),
+  );
 };
 
 const getAvailableMenuPermissions = () => HOLYDEEN_DASHBOARD_MENU_PERMISSIONS;

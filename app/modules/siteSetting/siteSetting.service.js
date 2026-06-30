@@ -3,7 +3,7 @@ const ApiError = require("../../../error/ApiError");
 
 const VALID_TYPES = [
   "general", "social_media", "contact",
-  "courier_api", "payment_gateway", "sms_gateway", "fraud_checker", "header", "footer",
+  "courier_api", "payment_gateway", "sms_gateway", "fraud_checker", "header", "footer", "website_footer",
 ];
 
 const validateType = (settingType) => {
@@ -111,12 +111,13 @@ const normalizeSocialMediaStorage = (value) => {
 };
 
 const getPublic = async () => {
-  const [general, socialMedia, contact, header, footer] = await Promise.all([
+  const [general, socialMedia, contact, header, footer, websiteFooter] = await Promise.all([
     db.siteSetting.findOne({ where: { settingType: "general" } }),
     db.siteSetting.findOne({ where: { settingType: "social_media" } }),
     db.siteSetting.findOne({ where: { settingType: "contact" } }),
     db.siteSetting.findOne({ where: { settingType: "header" } }),
     db.siteSetting.findOne({ where: { settingType: "footer" } }),
+    db.siteSetting.findOne({ where: { settingType: "website_footer" } }),
   ]);
 
   const generalData = normalizeSettingData(general?.data);
@@ -124,6 +125,7 @@ const getPublic = async () => {
   const contactData = normalizeSettingData(contact?.data);
   const headerData = normalizeSettingData(header?.data);
   const footerData = normalizeSettingData(footer?.data);
+  const websiteFooterData = normalizeSettingData(websiteFooter?.data);
   const contactActive = contactData.status !== false;
   const whiteLogo = generalData.whiteLogo;
   const darkLogo = generalData.darkLogo;
@@ -168,6 +170,7 @@ const getPublic = async () => {
     mapLink: contactActive ? contactData.mapLink || null : null,
     header: headerData,
     footer: footerData,
+    websiteFooter: websiteFooterData,
   };
 };
 

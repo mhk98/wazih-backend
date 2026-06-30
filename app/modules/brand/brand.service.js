@@ -3,8 +3,22 @@ const paginationHelpers = require("../../../helpers/paginationHelper");
 const db = require("../../../models");
 const Brand = db.brand;
 
+const normalizePayload = (payload = {}, current = {}) => ({
+  name: String(payload.name ?? current.name ?? "").trim(),
+  logo: payload.logo ?? payload.file ?? current.logo ?? null,
+  linkUrl: payload.linkUrl ?? payload.link ?? current.linkUrl ?? null,
+  sortOrder: payload.sortOrder || payload.sortOrder === 0
+    ? Number(payload.sortOrder)
+    : current.sortOrder ?? 0,
+  isActive: payload.status === false ||
+    payload.status === "Inactive" ||
+    payload.status === "inactive"
+    ? false
+    : payload.isActive ?? current.isActive ?? true,
+});
+
 const insertIntoDB = async (data) => {
-  return await Brand.create(data);
+  return await Brand.create(normalizePayload(data));
 };
 
 const getAllFromDB = async (filters, options) => {
@@ -47,9 +61,9 @@ const getAllFromDBWithoutQuery = async () => {
 
 const getPublicBrands = async () => {
   const rows = await Brand.findAll({
-    where: { status: "Active" },
+    where: { isActive: true },
     paranoid: true,
-    order: [["createdAt", "DESC"]],
+    order: [["sortOrder", "ASC"], ["createdAt", "ASC"], ["Id", "ASC"]],
   });
 
   return rows
@@ -58,8 +72,8 @@ const getPublicBrands = async () => {
       Id: brand.Id,
       name: brand.name,
       file: brand.logo,
-      linkUrl: null,
-      sortOrder: brand.Id,
+      linkUrl: brand.linkUrl || null,
+      sortOrder: brand.sortOrder ?? brand.Id,
     }));
 };
 
@@ -68,7 +82,10 @@ const getDataById = async (id) => {
 };
 
 const updateOneFromDB = async (id, payload) => {
-  return await Brand.update(payload, { where: { Id: id } });
+  const row = await Brand.findOne({ where: { Id: id } });
+  if (!row) return [0];
+  await row.update(normalizePayload(payload, row.toJSON()));
+  return [1];
 };
 
 const deleteIdFromDB = async (id) => {
